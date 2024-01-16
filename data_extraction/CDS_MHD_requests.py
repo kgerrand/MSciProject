@@ -1,6 +1,6 @@
 '''
 This script downloads meteorological data from the ECMWF (European Centre for Medium-Range Weather Forecasts) using the CDS (Climate Data Store) API. 
-The data being downloaded has been limited to the area surrounding Mace Head in Ireland, an AGAGE data collection station (40W-20W, 60N-40N).
+The data being downloaded has been limited to the area surrounding Mace Head in Ireland, an AGAGE data collection station (20W-0W, 40N-60N).
 
 '''
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 c = cdsapi.Client()
 
-output_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/'10m_wind'
+output_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/'MHD'/'10m_wind'
 
 # change the months and years as needed
 months = ['01', '02', '03', '04', '05', '06']
@@ -65,7 +65,7 @@ for i in range(len(years)):
                 'area': [60,-20, 40,0,],
             },
             # change the output file name as needed
-            f'{output_path}/MHD_10m_{years[i]}_{months[n]}.nc')
+            f'{output_path}/10m_{years[i]}_{months[n]}.nc')
         
         print(f'{names[n]} {years[i]} downloaded')
     
