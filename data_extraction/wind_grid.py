@@ -16,16 +16,21 @@ site_lat = 53.3267
 site_lon = -9.9046
 
 # creating the grid of 3x3 points surrounding site of interest
-points_lat = np.array([0, 5, 5, 0, -5, -5, -5, 0, 5]) + site_lat
-points_lon = np.array([0, 0, 5, 5, 5, 0, -5, -5, -5]) + site_lon
-points = range(9)
+# points_lat = np.array([0, 5, 5, 0, -5, -5, -5, 0, 5]) + site_lat
+# points_lon = np.array([0, 0, 5, 5, 5, 0, -5, -5, -5]) + site_lon
+# points = range(9)
+
+# creating additional grid with +/- 5 and 10 degrees latitude and longitude
+points_lat = np.array([0, 5, 5, 0, -5, -5, -5, 0, 5, 10, 10, 0, -10, -10, -10, 0, 10]) + site_lat
+points_lon = np.array([0, 0, 5, 5, 5, 0, -5, -5, -5, 0, 10, 10, 10, 0, -10, -10, -10]) + site_lon
+points = range(17)
 
 # creating an xarray DataArray for the grid coordinates
 target_lat = xr.DataArray(points_lat, dims=["points"], coords={"points": points})
 target_lon = xr.DataArray(points_lon, dims=["points"], coords={"points": points})
 
 
-years = range(2015, 2016)
+years = range(2000, 2001)
 
 # loop through the months and years to transform the data
 for fi, yr in enumerate(years):
@@ -39,7 +44,7 @@ for fi, yr in enumerate(years):
     for month in range(1, 13):
    
         # open the data for the month and year
-        extracted_data = xr.open_mfdataset((data_path/'10m_wind').glob(f"*{yr}_{month:02d}.nc"))    
+        extracted_data = xr.open_mfdataset((data_path/'single_levels').glob(f"*{yr}_{month:02d}.nc"))    
 
         # extract the u and v components of the wind
         extracted_u = extracted_data['u10']
