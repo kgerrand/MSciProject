@@ -5,6 +5,8 @@ The data being downloaded is u and v wind at pressure levels of 500 and 850 hPa.
 
 This code is ran on BC4, a supercomputer at the University of Bristol.
 
+The code to download data from other sites is very similar; it just sees a change in the file path and the area being downloaded.
+
 '''
 
 import cdsapi
