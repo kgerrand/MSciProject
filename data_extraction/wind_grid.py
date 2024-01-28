@@ -1,7 +1,7 @@
 '''
 
-This script transforms the meteorological data taken from ECMWF into a grid of 3x3 points surrounding an AGAGE station. The data is then saved as a netCDF file, split into one u and v component file per year.
-The code is set-up for Mace Head, Ireland. This can be easily changed by changing the site_lat and site_lon variables, as well as the data_path variable.
+This script transforms the meteorological data taken from ECMWF into a grid of 2 sets of 3x3 (+/- 5 and 10 lat/lon) points surrounding an AGAGE station, at three different heights.
+The data is saved as a netCDF file, split into one u and v component file per year.
 
 '''
 
@@ -9,21 +9,30 @@ import xarray as xr
 import numpy as np
 from pathlib import Path
 
-data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/'MHD'
+site = 'MHD'
+data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/site
 
-# latitude and longitude of Mace Head, Ireland
-site_lat = 53.3267
-site_lon = -9.9046
 
-# creating the grid of 3x3 points surrounding site of interest
+if site == 'MHD':
+    site_lat = 53.3267
+    site_lon = -9.9046
+
+elif site == 'GSN':
+    site_lat = 33.2924
+    site_lon = 126.1616
+
+
+
+# creating a grid system with +/- 5 latitude and longitude from the site of interest
 # points_lat = np.array([0, 5, 5, 0, -5, -5, -5, 0, 5]) + site_lat
 # points_lon = np.array([0, 0, 5, 5, 5, 0, -5, -5, -5]) + site_lon
 # points = range(9)
 
-# creating additional grid with +/- 5 and 10 degrees latitude and longitude
+# creating a grid system with +/- 5 and 10 degrees latitude and longitude from the site of interest
 points_lat = np.array([0, 5, 5, 0, -5, -5, -5, 0, 5, 10, 10, 0, -10, -10, -10, 0, 10]) + site_lat
 points_lon = np.array([0, 0, 5, 5, 5, 0, -5, -5, -5, 0, 10, 10, 10, 0, -10, -10, -10]) + site_lon
 points = range(17)
+
 
 # creating an xarray DataArray for the grid coordinates
 target_lat = xr.DataArray(points_lat, dims=["points"], coords={"points": points})
@@ -37,12 +46,20 @@ for fi, yr in enumerate(years):
 
     print(f"Opening {yr}")
 
-    # lists to store data for each year
-    u_list = []
-    v_list = []
+    # lists to store data for each year for each of the three levels
+    u_list_10m = []
+    v_list_10m = []
+
+    u_list_850hpa = []
+    v_list_850hpa = []
+
+    u_list_500hpa = []
+    v_list_500hpa = []
 
     for month in range(1, 13):
-   
+        # extracting the data for each month and year
+        #=======================================================================
+        # 10m wind
         # open the data for the month and year
         extracted_data = xr.open_mfdataset((data_path/'single_levels').glob(f"*{yr}_{month:02d}.nc"))    
 
@@ -55,15 +72,62 @@ for fi, yr in enumerate(years):
         v = extracted_v.interp(latitude=target_lat, longitude=target_lon, method="nearest")
 
         # appending monthly data to year lists
-        u_list.append(u)
-        v_list.append(v)
+        u_list_10m.append(u)
+        v_list_10m.append(v)
 
-    # concatenating the monthly data along the 'time' dimension
-    u_combined = xr.concat(u_list, dim='time')
-    v_combined = xr.concat(v_list, dim='time')
+        #=======================================================================
+        # 850hPa wind
+        extracted_data = xr.open_mfdataset((data_path/'pressure_levels').glob(f"*{yr}_{month:02d}.nc")).sel(level=850)
 
-    # saving the combined data for the year
-    u_combined.to_netcdf(data_path/'10m_wind_grid'/f"10m_u_{yr}.nc")
-    v_combined.to_netcdf(data_path/'10m_wind_grid'/f"10m_v_{yr}.nc")
+        extracted_u = extracted_data['u']
+        extracted_v = extracted_data['v']
+
+        u = extracted_u.interp(latitude=target_lat, longitude=target_lon, method="nearest")
+        v = extracted_v.interp(latitude=target_lat, longitude=target_lon, method="nearest")
+
+        u_list_850hpa.append(u)
+        v_list_850hpa.append(v)
+
+        #=======================================================================
+        # 500hPa wind
+        extracted_data = xr.open_mfdataset((data_path/'pressure_levels').glob(f"*{yr}_{month:02d}.nc")).sel(level=500)
+
+        extracted_u = extracted_data['u']
+        extracted_v = extracted_data['v']
+
+        u = extracted_u.interp(latitude=target_lat, longitude=target_lon, method="nearest")
+        v = extracted_v.interp(latitude=target_lat, longitude=target_lon, method="nearest")
+
+        u_list_500hpa.append(u)
+        v_list_500hpa.append(v)
+        #=======================================================================
+        
+    
+    # concatenating the monthly data along the 'time' dimension and saving the combined data for the year
+    #=======================================================================
+    # 10m wind
+    u_combined_10m = xr.concat(u_list_10m, dim='time')
+    v_combined_10m = xr.concat(v_list_10m, dim='time')
+
+    u_combined_10m.to_netcdf(data_path/'10m_wind_grid'/f"10m_u_{yr}.nc")
+    v_combined_10m.to_netcdf(data_path/'10m_wind_grid'/f"10m_v_{yr}.nc")
+
+    #=======================================================================
+    # 850hPa wind
+    u_combined_850hpa = xr.concat(u_list_850hpa, dim='time')
+    v_combined_850hpa = xr.concat(v_list_850hpa, dim='time')
+
+    u_combined_850hpa.to_netcdf(data_path/'850hPa_wind_grid'/f"850hPa_u_{yr}.nc")
+    v_combined_850hpa.to_netcdf(data_path/'850hPa_wind_grid'/f"850hPa_v_{yr}.nc")
+
+    #=======================================================================
+    # 500hPa wind
+    u_combined_500hpa = xr.concat(u_list_500hpa, dim='time')
+    v_combined_500hpa = xr.concat(v_list_500hpa, dim='time')
+
+    u_combined_500hpa.to_netcdf(data_path/'500hPa_wind_grid'/f"500hPa_u_{yr}.nc")
+    v_combined_500hpa.to_netcdf(data_path/'500hPa_wind_grid'/f"500hPa_v_{yr}.nc")
+
+    #=======================================================================
 
     print(f"Closing {yr}")
