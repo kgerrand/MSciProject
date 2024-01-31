@@ -9,7 +9,12 @@ import xarray as xr
 import numpy as np
 from pathlib import Path
 
-site = 'MHD'
+import sys
+sys.path.append('../')
+import config
+
+site = 'GS'
+site_name = config.site_dict[site]
 data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/site
 
 
@@ -17,10 +22,12 @@ if site == 'MHD':
     site_lat = 53.3267
     site_lon = -9.9046
 
-elif site == 'GSN':
+elif site == 'GS':
     site_lat = 33.2924
     site_lon = 126.1616
 
+
+print(f"Creating grid for data collected in {site_name}.")
 
 
 # creating a grid system with +/- 5 latitude and longitude from the site of interest
@@ -39,7 +46,7 @@ target_lat = xr.DataArray(points_lat, dims=["points"], coords={"points": points}
 target_lon = xr.DataArray(points_lon, dims=["points"], coords={"points": points})
 
 
-years = range(2000, 2001)
+years = range(2007, 2012)
 
 # loop through the months and years to transform the data
 for fi, yr in enumerate(years):
