@@ -15,17 +15,11 @@ import config
 
 site = 'GS'
 site_name = config.site_dict[site]
+
 data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/site
 
-
-if site == 'MHD':
-    site_lat = 53.3267
-    site_lon = -9.9046
-
-elif site == 'GS':
-    site_lat = 33.2924
-    site_lon = 126.1616
-
+site_lat = config.site_coords_dict[site][0]
+site_lon = config.site_coords_dict[site][1]
 
 print(f"Creating grid for data collected in {site_name}.")
 
