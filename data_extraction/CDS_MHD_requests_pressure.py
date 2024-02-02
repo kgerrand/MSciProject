@@ -21,6 +21,10 @@ output_path = Path.home()/'Year4'/'MSciProject'/'data'/'pressure_levels'
 months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
 names = ['Jan','Feb', 'March', 'April', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec']
 
+#MHD
+site_lat = 53.3267
+site_lon = -9.9046
+
 
 def main(year):
 
@@ -77,7 +81,7 @@ def main(year):
                     ],
                         
                     'format': 'netcdf',
-                    'area': [60,-20, 40,0,],
+                    'area': [(site_lat+12),(site_lon-12), (site_lat-12),(site_lon+12),],
                 },
                 # change the output file name as needed
                 output_filename)
