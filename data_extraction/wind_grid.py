@@ -13,7 +13,7 @@ import sys
 sys.path.append('../')
 import config
 
-site = 'GS'
+site = 'MHD'
 site_name = config.site_dict[site]
 
 data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/site
@@ -40,7 +40,7 @@ target_lat = xr.DataArray(points_lat, dims=["points"], coords={"points": points}
 target_lon = xr.DataArray(points_lon, dims=["points"], coords={"points": points})
 
 
-years = range(2007, 2012)
+years = range(1978, 2024)
 
 # loop through the months and years to transform the data
 for fi, yr in enumerate(years):
@@ -118,6 +118,9 @@ for fi, yr in enumerate(years):
     u_combined_850hpa = xr.concat(u_list_850hpa, dim='time')
     v_combined_850hpa = xr.concat(v_list_850hpa, dim='time')
 
+    u_combined_850hpa = xr.DataArray(u_combined_850hpa, name='u850')
+    v_combined_850hpa = xr.DataArray(v_combined_850hpa, name='v850')
+
     u_combined_850hpa.to_netcdf(data_path/'850hPa_wind_grid'/f"850hPa_u_{yr}.nc")
     v_combined_850hpa.to_netcdf(data_path/'850hPa_wind_grid'/f"850hPa_v_{yr}.nc")
 
@@ -125,6 +128,9 @@ for fi, yr in enumerate(years):
     # 500hPa wind
     u_combined_500hpa = xr.concat(u_list_500hpa, dim='time')
     v_combined_500hpa = xr.concat(v_list_500hpa, dim='time')
+
+    u_combined_500hpa = xr.DataArray(u_combined_500hpa, name='u500')
+    v_combined_500hpa = xr.DataArray(v_combined_500hpa, name='v500')
 
     u_combined_500hpa.to_netcdf(data_path/'500hPa_wind_grid'/f"500hPa_u_{yr}.nc")
     v_combined_500hpa.to_netcdf(data_path/'500hPa_wind_grid'/f"500hPa_v_{yr}.nc")

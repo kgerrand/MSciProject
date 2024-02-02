@@ -17,11 +17,13 @@ site = 'MHD'
 site_name = config.site_dict[site]
 data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/site
 
+site_lat = config.site_coords_dict[site][0]
+site_lon = config.site_coords_dict[site][1]
 
 print(f"Extracting data collected in {site_name}.")
 
 
-years = range(1978, 1982)
+years = range(1978, 2000)
 
 # loop through the months and years to transform the data
 for fi, yr in enumerate(years):
@@ -41,6 +43,10 @@ for fi, yr in enumerate(years):
         # extracting variables
         sp = extracted_data['sp']
         blh = extracted_data['blh']
+
+        # selecting the data for the site of interest
+        sp = sp.interp(latitude=site_lat, longitude=site_lon, method='nearest')
+        blh = blh.interp(latitude=site_lat, longitude=site_lon, method='nearest')
 
         # appending monthly data to year lists
         sp_list.append(sp)
