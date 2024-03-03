@@ -3,7 +3,7 @@ site = 'MHD'
 site_dict = {"MHD":"Mace Head, Ireland", 
              "BA":"Ragged Point, Barbados", 
              "CG":"Cape Grim, Australia", 
-             "GS":"Gosan, South Korea",
+             "GSN":"Gosan, South Korea",
              "J1":"Jungfraujoch, Switzerland", 
              "M5":"Monte Cimone, Italy", 
              "TH":"Trinidad Head, USA", 
@@ -19,6 +19,6 @@ site_coords_dict = {"MHD":[53.3267, -9.9046],
                     "ZE":[78.9072, 11.8867]}
 
 
-compound = "hfc-152a"
+compound = "sf6"
 
 confidence_threshold = 0.8
