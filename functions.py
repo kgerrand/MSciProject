@@ -10,6 +10,7 @@ import seaborn as sns
 from datetime import datetime, timedelta
 from pathlib import Path
 from joblib import load
+import calendar
 
 import config
 
@@ -967,5 +968,89 @@ def compare_benchmark_to_model(df_benchmark, percentile, model, start_year=None,
     mape_model = np.mean(np.abs((df_actual_monthly["mf"] - df_pred_monthly["mf"]) / df_actual_monthly["mf"])) * 100
     mape_benchmark = np.mean(np.abs((df_actual_monthly["mf"] - df_benchmark_monthly["mf"]) / df_actual_monthly["mf"])) * 100
     print(f"MAPE for model: {mape_model:.2f}%, MAPE for benchmark: {mape_benchmark:.2f}%")
+
+#=======================================================================
+    
+
+## EDA FUNCTIONS
+#=======================================================================
+def one_month(month, resampled_ecmwf_mhd, resampled_met_mhd):
+    """
+    Retrieves wind speed, wind direction, and Met Office data for a given month.
+
+    Parameters:
+    month (int): The month of interest.
+
+    Returns:
+    tuple: A tuple containing the ECMWF wind speed, ECMWF wind direction, and Met Office data for the specified month.
+    """
+
+    _, last_day = calendar.monthrange(2015, int(month))
+    start_date = pd.Timestamp(f'2015-{month}-01')
+    end_date = pd.Timestamp(f'2015-{month}-{last_day}')
+
+    # ECMWF
+    month_ecmwf_mhd = resampled_ecmwf_mhd[start_date:end_date]
+
+    month_ecmwf_u = month_ecmwf_mhd['u10']
+    month_ecmwf_v = month_ecmwf_mhd['v10']
+
+    month_ecmwf_wind_speed = np.sqrt(month_ecmwf_u**2 + month_ecmwf_v**2)
+    month_ecmwf_wind_direction = (np.arctan2(month_ecmwf_u, month_ecmwf_v) * 180 / np.pi) + 180
+
+    # Met Office
+    month_met_mhd = resampled_met_mhd[start_date:end_date]
+
+    return month_ecmwf_wind_speed, month_ecmwf_wind_direction, month_met_mhd
+
+#=======================================================================
+def find_closest_lat_lon(coords, dataset):
+    """
+    Finds the closest latitude and longitude coordinates in the dataset to the given coordinates.
+
+    Args:
+    - coords (tuple): A tuple containing the latitude and longitude coordinates.
+    - dataset (xarray.Dataset): The dataset containing latitude and longitude coordinates.
+
+    Returns:
+    - closest_lat (float): The closest latitude coordinate.
+    - closest_lon (float): The closest longitude coordinate.
+
+    Raises:
+    - ValueError: If latitude and longitude coordinates are not found in the dataset.
+    """
+
+    if 'lat' in dataset.coords:
+        # NCEP dataset
+        lats = dataset.lat
+        lons = dataset.lon
+
+        site_lat = coords[0]
+        site_lon = coords[1] + 360
+
+    elif 'latitude' in dataset.coords:
+        # ECMWF dataset
+        lats = dataset.latitude
+        lons = dataset.longitude
+
+        site_lat = coords[0]
+        site_lon = coords[1]
+
+    else:
+        raise ValueError('Latitude and longitude coordinates not found in dataset')    
+    
+    lat_diff = abs(lats - site_lat)
+    lon_diff = abs(lons - site_lon)
+    
+    lat_index = np.where(lat_diff == min(lat_diff))[0][0]
+    lon_index = np.where(lon_diff == min(lon_diff))[0][0]
+    
+    closest_lat = lats[lat_index]
+    closest_lon = lons[lon_index]
+
+    if closest_lon > 180:
+        closest_lon -= 360
+    
+    return closest_lat.values, closest_lon.values
 
 #=======================================================================
