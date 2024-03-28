@@ -1,6 +1,5 @@
 This repository contains all code that was developed during my MSci resarch project in Atmospheric Computational Chemistry undertaken in my final year of my Chemistry with Scientific Computing degree (23-24).
 
-This repository contains all code being developed as part of my MSci project in Atmospheric Computational Chemistry, where I am using machine learning to accurately predict baseline data points in a greenhouse gas concentration time series.
 
 ### Context
 The aim of the project was to use machine learning to accurately identify baseline data points in a greenhouse gas concentration time series. These predictions are made independent of species and based on meteorological conditions, and are based on outputs obtained from the UK Met Office. In this context, baseline refers to data points that are representative of background conditions at a given latitude. 
