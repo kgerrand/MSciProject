@@ -383,7 +383,7 @@ def plot_predictions(results):
     _, site_name, compound = access_info()
 
     fig, axes = plt.subplots(2,1, figsize=(15,10))
-    sns.set(style='whitegrid')
+    sns.set_theme(style='ticks', font='Arial')
 
     # plot 1 - true baselines
     results["mf"].plot(ax=axes[0], label="All Data", color='grey', linewidth=1, alpha=0.8)
@@ -399,8 +399,8 @@ def plot_predictions(results):
     fig.suptitle(f"{compound} at {site_name}", fontsize=20, y=0.92)
 
     for ax in axes:
-        ax.set_xlabel("Time", fontsize=15, fontstyle='italic')
-        ax.set_ylabel("mole fraction in air / ppt", fontsize=15, fontstyle='italic')
+        ax.set_xlabel("Time", fontsize=12, fontstyle='italic')
+        ax.set_ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
     
 #=======================================================================
 def plot_predictions_monthly(results, model_name, start_year=None, end_year=None):
@@ -444,8 +444,8 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
 
     # plotting
     fig, ax = plt.subplots(figsize=(12,5))
-    sns.set(style='darkgrid')
-    sns.set_palette("colorblind")
+    sns.set_theme(style='ticks', font='Arial')
+    ax.minorticks_on()
 
     df_actual_monthly["mf"].plot(ax=ax, label="True Baselines", color='darkgreen', alpha=0.75, linewidth=1.5)
     if site == 'MHD':
@@ -463,31 +463,34 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     # adding shading for training/validation/finetuning sets if visualised in chosen time period
 
     model_type = model_name[:2]
-    
-    # Mace Head model - trained on 2013-2018, validated on 2019 (NN) or 2016-2018, validated on 2019 (RF)
-    if site == 'MHD' and model_type == 'nn':
-        ax.axvspan(datetime(2013,1,1), datetime(2018,12,31), alpha=0.3, label="Training Set", color='grey')
-        ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
 
-    elif site == 'MHD' and model_type == 'rf':
-        ax.axvspan(datetime(2016,1,1), datetime(2018,12,31), alpha=0.3, label="Training Set", color='grey')
-        ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
+    if start_year and end_year:
+        pass
+    else:
+        # Mace Head model - trained on 2013-2018, validated on 2019 (NN) or 2016-2018, validated on 2019 (RF)
+        if site == 'MHD' and model_type == 'nn':
+            ax.axvspan(datetime(2013,1,1), datetime(2018,12,31), alpha=0.3, label="Training Set", color='grey')
+            ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
 
-    # Gosan model
-    elif site == 'GSN' and "finetuned" not in model_name and model_type == 'nn':
-        ax.axvspan(datetime(2009,1,1), datetime(2013,12,31), alpha=0.3, label="Training Set", color='grey')
-        ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
+        elif site == 'MHD' and model_type == 'rf':
+            ax.axvspan(datetime(2016,1,1), datetime(2018,12,31), alpha=0.3, label="Training Set", color='grey')
+            ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
 
-    elif site == 'GSN' and "finetuned" not in model_name and model_type == 'rf':
-        ax.axvspan(datetime(2011,1,1), datetime(2013,12,31), alpha=0.3, label="Training Set", color='grey')
-        ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
+        # Gosan model
+        elif site == 'GSN' and "finetuned" not in model_name and model_type == 'nn':
+            ax.axvspan(datetime(2009,1,1), datetime(2013,12,31), alpha=0.3, label="Training Set", color='grey')
+            ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
 
-    # Gosan finetuned model - finetuned on 2011-2014 for NN and 2014 for RF
-    elif site == 'GSN' and "finetuned" in model_name and model_type == 'nn':
-        ax.axvspan(datetime(2011,1,1), datetime(2014,12,31), alpha=0.2, label="Fine-tuning Set", color='orange')
+        elif site == 'GSN' and "finetuned" not in model_name and model_type == 'rf':
+            ax.axvspan(datetime(2011,1,1), datetime(2013,12,31), alpha=0.3, label="Training Set", color='grey')
+            ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
 
-    elif site == 'GSN' and "finetuned" in model_name and model_type == 'rf':
-        ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Fine-tuning Set", color='orange')
+        # Gosan finetuned model - finetuned on 2011-2014 for NN and 2014 for RF
+        elif site == 'GSN' and "finetuned" in model_name and model_type == 'nn':
+            ax.axvspan(datetime(2011,1,1), datetime(2014,12,31), alpha=0.2, label="Fine-tuning Set", color='orange')
+
+        elif site == 'GSN' and "finetuned" in model_name and model_type == 'rf':
+            ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Fine-tuning Set", color='orange')
 
 
     # adding tolerance range based on 3 standard deviations
@@ -523,9 +526,9 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
             date = idx.strftime('%Y-%m')
             anomalous_months.append(date)
 
-    plt.ylabel("mole fraction in air / ppt")
+    plt.ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
     plt.xlabel("")
-    plt.title(f"Comparing True and Predicted Baseline Monthly Means for {compound} at {site_name}", fontsize=15)
+    # plt.title(f"Comparing True and Predicted Baseline Monthly Means for {compound} at {site_name}", fontsize=15)
     plt.legend(loc="best", fontsize=12)
     plt.show()
 
@@ -571,7 +574,7 @@ def analyse_anomalies(results, anomalies_list):
 
     if len(anomalies_list) == 1:
         fig, axs = plt.subplots(1, 2, figsize=(15,6))
-        sns.set(style='whitegrid')
+        sns.set_theme(style='ticks', font='Arial')
 
         start, end = anomalies_range_list[0], anomalies_range_list[1]
         month = results.loc[start:end]
@@ -603,8 +606,8 @@ def analyse_anomalies(results, anomalies_list):
         start_date = datetime.strptime(start, '%Y-%m-%d')
         formatted_date = start_date.strftime('%b %Y')
         # axs[0].set_title(f"{formatted_date}", fontsize=20)
-        axs[0].set_ylabel("mole fraction in air / ppt")
-        axs[0].legend(fontsize=14)
+        axs[0].set_ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
+        axs[0].legend(fontsize=12, loc='upper left')
 
         # comparing counts
         counts = []
@@ -661,7 +664,7 @@ def analyse_anomalies(results, anomalies_list):
             start_date = datetime.strptime(start, '%Y-%m-%d')
             formatted_date = start_date.strftime('%b %Y')
             axs[n,0].set_title(f"{formatted_date}", fontsize=20)
-            axs[n,0].set_ylabel("mole fraction in air / ppt")
+            axs[n,0].set_ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
             axs[n,0].legend(fontsize=14)
             
             # comparing counts
@@ -682,7 +685,7 @@ def analyse_anomalies(results, anomalies_list):
                 axs[n,1].text(i, counts[i], f"{counts[i]} ({percentage:.1f}%)", fontsize=10, ha='center', va='bottom')
 
 
-    fig.suptitle(f"Anomalous Months for {compound} at {site_name}", fontsize=25, y=1.01)
+    # fig.suptitle(f"Anomalous Months for {compound} at {site_name}", fontsize=25, y=1.01)
     fig.set_tight_layout(True)
     plt.show()
 
@@ -782,7 +785,7 @@ def plot_benchmark(df_benchmark, percentile):
 
     # plotting
     fig, ax = plt.subplots(figsize=(12,5))
-    sns.set(style='whitegrid')
+    sns.set_theme(style='ticks', font='Arial')
 
     df_actual_monthly["mf"].plot(ax=ax, label="True Baselines", color='darkgreen', alpha=0.75)
     df_benchmark_monthly["mf"].plot(ax=ax, label=f"Benchmarked Baselines (bottom {percentile} percent)", color='purple', linestyle='-.')
@@ -830,7 +833,7 @@ def plot_benchmark(df_benchmark, percentile):
             date = df_benchmark_monthly.index[i].strftime('%Y-%m')
             anomalous_months.append(date)
 
-    plt.ylabel("mole fraction in air / ppt")
+    plt.ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
     plt.title(f"{compound} at {site_name}", fontsize=15)
     plt.legend(loc="best", fontsize=12)
     plt.show()
@@ -929,7 +932,7 @@ def compare_benchmark_to_model(df_benchmark, percentile, model, start_year=None,
 
     # plotting
     fig, ax = plt.subplots(figsize=(12,5))
-    sns.set(style='whitegrid')
+    sns.set_theme(style='ticks', font='Arial')
 
     df_actual_monthly["mf"].plot(ax=ax, label="True Baselines", color='darkgreen', alpha=0.75)
     df_pred_monthly["mf"].plot(ax=ax, label="Predicted Baselines", color='blue', linestyle='--')
@@ -948,9 +951,9 @@ def compare_benchmark_to_model(df_benchmark, percentile, model, start_year=None,
     lower_benchmark = df_benchmark_monthly["mf"] - std_benchmark_monthly['mf']
     # ax.fill_between(df_benchmark_monthly.index, lower_benchmark, upper_benchmark, color='purple', alpha=0.2, label="Benchmarked Baseline Standard Deviation")
     
-    plt.ylabel("mole fraction in air / ppt")
-    plt.title(f"{compound} at {site_name}", fontsize=15)
-    plt.legend(loc="lower right", fontsize=12)
+    plt.ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
+    # plt.title(f"{compound} at {site_name}", fontsize=15)
+    plt.legend(loc="best", fontsize=12)
     plt.show()
 
     # calculating some statistics for numerical comparison

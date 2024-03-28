@@ -19,6 +19,6 @@ site_coords_dict = {"MHD":[53.3267, -9.9046],
                     "ZE":[78.9072, 11.8867]}
 
 
-compound = "hfc-134a"
+compound = "ch3cl"
 
 confidence_threshold = 0.8
