@@ -535,6 +535,12 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     print(f"Number of anomalies: {len(anomalous_months)}")
     print(f"Anomalous months: {anomalous_months}")
 
+    # calculates percentage of non-anomalous months
+    total_months = len(df_pred_monthly)
+    non_anomalous_months = total_months - len(anomalous_months)
+    percentage = non_anomalous_months / total_months * 100
+    print(f"Percentage of non-anomalous months: {percentage:.1f}%")
+
 #=======================================================================
 def analyse_anomalies(results, anomalies_list):
     """
