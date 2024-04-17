@@ -19,6 +19,6 @@ site_coords_dict = {"MHD":[53.3267, -9.9046],
                     "ZE":[78.9072, 11.8867]}
 
 
-compound = "ch3cl"
+compound = "cfc-12"
 
 confidence_threshold = 0.8
