@@ -1,4 +1,5 @@
 site = 'MHD'
+compound = "cfc-12"
 
 site_dict = {"MHD":"Mace Head, Ireland", 
              "BA":"Ragged Point, Barbados", 
@@ -7,7 +8,8 @@ site_dict = {"MHD":"Mace Head, Ireland",
              "J1":"Jungfraujoch, Switzerland", 
              "M5":"Monte Cimone, Italy", 
              "TH":"Trinidad Head, USA", 
-             "ZE":"Zeppelin, Svalbard"}
+             "ZE":"Zeppelin, Svalbard",
+             "SMO": "Cape Matatula, American Samoa"}
 
 site_coords_dict = {"MHD":[53.3267, -9.9046], 
                     "BA":[13.1651, -59.4321], 
@@ -16,9 +18,8 @@ site_coords_dict = {"MHD":[53.3267, -9.9046],
                     "J1":[46.547767, 7.985883], 
                     "M5":[44.1932, 10.7014], 
                     "TH":[41.0541, -124.151], 
-                    "ZE":[78.9072, 11.8867]}
+                    "ZE":[78.9072, 11.8867],
+                    "SMO": [-14.2474, -170.5644]}
 
-
-compound = "cfc-12"
 
 confidence_threshold = 0.8
