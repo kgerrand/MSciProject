@@ -2,7 +2,7 @@
 
 #!/bin/bash
 
-#SBATCH --job-name=ECMWF
+#SBATCH --job-name=3
 #SBATCH --partition=veryshort
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -12,7 +12,7 @@
 #SBATCH --account=PHYS030544
 
 # Load correct anaconda environment
-module load languages/anaconda3/2022.11-3.9.13
+module load languages/python/3.12.3
 pip install cdsapi
 
 # Change to working directory, where job was submitted from
@@ -32,9 +32,9 @@ printf "\n\n"
 # Recording start time
 start_time=$(date +%s)
 
-# File run
-year=$1
-python access_data_single.py $year
+# File run - change which python script is run here to access the different ECMWF datasets
+YEAR=$1
+python CDS_single_levels.py $YEAR
 
 # End recording the end time
 end_time=$(date +%s)

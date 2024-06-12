@@ -16,26 +16,42 @@ import os
 
 c = cdsapi.Client()
 
-output_path = Path.home()/'Year4'/'MSciProject'/'data'/'pressure_levels'
+
+# change to extract data for different AGAGE sites
+site = 'BA'
+
+site_coords_dict = {"MHD":[53.3267, -9.9046], 
+                    "BA":[13.1651, -59.4321], 
+                    "CG":[-40.6833, 144.6894], 
+                    "GSN":[33.2924, 126.1616],
+                    "J1":[46.547767, 7.985883], 
+                    "M5":[44.1932, 10.7014], 
+                    "TH":[41.0541, -124.151], 
+                    "ZE":[78.9072, 11.8867],
+                    "SMO": [-14.2474, -170.5644]}
+
+# extract site coordinates
+site_lat = site_coords_dict[site][0]
+site_lon = site_coords_dict[site][1]
+
+
+# output_path = Path.home()/'Year4'/'MSciProject'/'data'/'single_levels'
+output_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/site/'pressure_levels'
 
 months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
-names = ['Jan','Feb', 'March', 'April', 'May', 'June', 'July', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec']
 
-#MHD
-site_lat = 53.3267
-site_lon = -9.9046
 
 
 def main(year):
 
     for n in range(len(months)):
-        output_filename = f'{output_path}/3dwind_{year}_{months[n]}.nc'
+        output_filename = f'{output_path}/{site}_3dwind_{year}_{months[n]}.nc'
 
         if os.path.exists(output_filename):
-            print(f"{names[n]} {year} already downloaded. Skipping.")
+            print(f"{months[n]} {year} already downloaded. Skipping.")
 
         else:
-            print(f'Downloading {names[n]} {year}')
+            print(f'Downloading {months[n]} {year}')
            
             c.retrieve(
                 'reanalysis-era5-pressure-levels',
@@ -86,7 +102,7 @@ def main(year):
                 # change the output file name as needed
                 output_filename)
                 
-            print(f'{names[n]} {year} downloaded')
+            print(f'{months[n]} {year} downloaded')
        
 
 if __name__ == '__main__':

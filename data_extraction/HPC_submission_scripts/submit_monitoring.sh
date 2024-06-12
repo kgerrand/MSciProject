@@ -2,13 +2,12 @@
 
 #!/bin/bash
 
-#SBATCH --job-name=ECMWF
+#SBATCH --job-name=1
 #SBATCH --partition=hmem
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=8
 #SBATCH --time=14-00:00:0 
-#SBATCH --mem-per-cpu=100M
 #SBATCH --account=PHYS030544
 #SBATCH --mem=490000M
 
@@ -20,8 +19,8 @@ cd "${SLURM_SUBMIT_DIR}"
 start_time=$(date +%s)
 
 # File run
-year = $1
-./monitoring_jobs.sh $year
+YEAR=$1
+./monitor_jobs.sh $YEAR
 
 # End recording the end time
 end_time=$(date +%s)
