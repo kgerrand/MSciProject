@@ -6,24 +6,34 @@ The data is saved as a netCDF file.
 '''
 
 import xarray as xr
-import numpy as np
 from pathlib import Path
 
 import sys
 sys.path.append('../')
-import config
 
-site = 'MHD'
-site_name = config.site_dict[site]
+site = 'BA'
+
+site_coords_dict = {"MHD":[53.3267, -9.9046], 
+                    "RPB":[13.1651, -59.4321], 
+                    "CGO":[-40.6833, 144.6894], 
+                    "GSN":[33.2924, 126.1616],
+                    "JFJ":[46.547767, 7.985883], 
+                    "CMN":[44.1932, 10.7014], 
+                    "THD":[41.0541, -124.151], 
+                    "ZEP":[78.9072, 11.8867],
+                    "SMO": [-14.2474, -170.5644]}
+
+site_lat = site_coords_dict[site][0]
+site_lon = site_coords_dict[site][1]
+
+
+print(f"Creating grid for data collected in {site}.")
+
+
 data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/site
 
-site_lat = config.site_coords_dict[site][0]
-site_lon = config.site_coords_dict[site][1]
 
-print(f"Extracting data collected in {site_name}.")
-
-
-years = range(1978, 2000)
+years = range(1999, 2024)
 
 # loop through the months and years to transform the data
 for fi, yr in enumerate(years):
@@ -58,11 +68,11 @@ for fi, yr in enumerate(years):
     #=======================================================================
     # surface pressure
     sp_combined = xr.concat(sp_list, dim='time')
-    sp_combined.to_netcdf(data_path/'surface_pressure'/f"sp_{yr}.nc")
+    sp_combined.to_netcdf(data_path/'surface_pressure'/f"{site}_sp_{yr}.nc")
 
     # boundary layer height
     blh_combined = xr.concat(blh_list, dim='time')
-    blh_combined.to_netcdf(data_path/'boundary_layer_height'/f"blh_{yr}.nc")
+    blh_combined.to_netcdf(data_path/'boundary_layer_height'/f"{site}_blh_{yr}.nc")
 
     #=======================================================================
 

@@ -11,17 +11,27 @@ from pathlib import Path
 
 import sys
 sys.path.append('../')
-import config
 
-site = 'MHD'
-site_name = config.site_dict[site]
+site = 'BA'
+
+site_coords_dict = {"MHD":[53.3267, -9.9046], 
+                    "RPB":[13.1651, -59.4321], 
+                    "CGO":[-40.6833, 144.6894], 
+                    "GSN":[33.2924, 126.1616],
+                    "JFJ":[46.547767, 7.985883], 
+                    "CMN":[44.1932, 10.7014], 
+                    "THD":[41.0541, -124.151], 
+                    "ZEP":[78.9072, 11.8867],
+                    "SMO": [-14.2474, -170.5644]}
+
+site_lat = site_coords_dict[site][0]
+site_lon = site_coords_dict[site][1]
+
+
+print(f"Creating grid for data collected in {site}.")
+
 
 data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/site
-
-site_lat = config.site_coords_dict[site][0]
-site_lon = config.site_coords_dict[site][1]
-
-print(f"Creating grid for data collected in {site_name}.")
 
 
 # creating a grid system with +/- 5 latitude and longitude from the site of interest
@@ -40,7 +50,7 @@ target_lat = xr.DataArray(points_lat, dims=["points"], coords={"points": points}
 target_lon = xr.DataArray(points_lon, dims=["points"], coords={"points": points})
 
 
-years = range(1978, 2024)
+years = range(1999, 2024)
 
 # loop through the months and years to transform the data
 for fi, yr in enumerate(years):
@@ -62,7 +72,7 @@ for fi, yr in enumerate(years):
         #=======================================================================
         # 10m wind
         # open the data for the month and year
-        extracted_data = xr.open_mfdataset((data_path/'single_levels').glob(f"*{yr}_{month:02d}.nc"))    
+        extracted_data = xr.open_mfdataset((data_path/'single_levels').glob(f"*{yr}_{month:02d}.nc"))
 
         # extract the u and v components of the wind
         extracted_u = extracted_data['u10']
@@ -110,8 +120,8 @@ for fi, yr in enumerate(years):
     u_combined_10m = xr.concat(u_list_10m, dim='time')
     v_combined_10m = xr.concat(v_list_10m, dim='time')
 
-    u_combined_10m.to_netcdf(data_path/'10m_wind_grid'/f"10m_u_{yr}.nc")
-    v_combined_10m.to_netcdf(data_path/'10m_wind_grid'/f"10m_v_{yr}.nc")
+    u_combined_10m.to_netcdf(data_path/'10m_wind_grid'/f"{site}_10m_u_{yr}.nc")
+    v_combined_10m.to_netcdf(data_path/'10m_wind_grid'/f"{site}_10m_v_{yr}.nc")
 
     #=======================================================================
     # 850hPa wind
@@ -121,8 +131,8 @@ for fi, yr in enumerate(years):
     u_combined_850hpa = xr.DataArray(u_combined_850hpa, name='u850')
     v_combined_850hpa = xr.DataArray(v_combined_850hpa, name='v850')
 
-    u_combined_850hpa.to_netcdf(data_path/'850hPa_wind_grid'/f"850hPa_u_{yr}.nc")
-    v_combined_850hpa.to_netcdf(data_path/'850hPa_wind_grid'/f"850hPa_v_{yr}.nc")
+    u_combined_850hpa.to_netcdf(data_path/'850hPa_wind_grid'/f"{site}_850hPa_u_{yr}.nc")
+    v_combined_850hpa.to_netcdf(data_path/'850hPa_wind_grid'/f"{site}_850hPa_v_{yr}.nc")
 
     #=======================================================================
     # 500hPa wind
@@ -132,8 +142,8 @@ for fi, yr in enumerate(years):
     u_combined_500hpa = xr.DataArray(u_combined_500hpa, name='u500')
     v_combined_500hpa = xr.DataArray(v_combined_500hpa, name='v500')
 
-    u_combined_500hpa.to_netcdf(data_path/'500hPa_wind_grid'/f"500hPa_u_{yr}.nc")
-    v_combined_500hpa.to_netcdf(data_path/'500hPa_wind_grid'/f"500hPa_v_{yr}.nc")
+    u_combined_500hpa.to_netcdf(data_path/'500hPa_wind_grid'/f"{site}_500hPa_u_{yr}.nc")
+    v_combined_500hpa.to_netcdf(data_path/'500hPa_wind_grid'/f"{site}_500hPa_v_{yr}.nc")
 
     #=======================================================================
 
