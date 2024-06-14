@@ -30,7 +30,7 @@ def read_manning(site):
     - df (pandas.DataFrame): DataFrame with baseline flags as a binary variable
     """
     
-    site_translator = {"MHD":"MH", "CGO":"CG", "GSN":"GS", "JFJ":"J1", "CMN":"M5", "THD":"TH", "ZEP":"ZE"}
+    site_translator = {"MHD":"MH", "CGO":"CG", "GSN":"GS", "JFJ":"J1", "CMN":"M5", "THD":"TH", "ZEP":"ZE", "RPB":"BA", "SMO":"SM"}
 
     # Filtering so only including data relevant to the given site
     files = (data_path / "manning_baselines").glob(f"{site_translator[site]}*.txt")
