@@ -1,7 +1,7 @@
 '''
 
-This script transforms the meteorological data taken from ECMWF into a grid of 2 sets of 3x3 (+/- 5 and 10 lat/lon) points surrounding an AGAGE station, at three different heights.
-The data is saved as a netCDF file, split into one u and v component file per year.
+This script transforms the surface pressure and boundary layer height data taken from ECMWF into a single file per year.
+The data is saved as a netCDF file.
 
 '''
 
@@ -12,7 +12,7 @@ from pathlib import Path
 import sys
 sys.path.append('../')
 
-site = 'BA'
+site = 'CGO'
 
 site_coords_dict = {"MHD":[53.3267, -9.9046], 
                     "RPB":[13.1651, -59.4321], 
@@ -28,36 +28,33 @@ site_lat = site_coords_dict[site][0]
 site_lon = site_coords_dict[site][1]
 
 
-print(f"Creating grid for data collected in {site}.")
+print(f"Extracting chosen data from {site}.")
 
-
-data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/site
-
-
-# creating a grid system with +/- 5 latitude and longitude from the site of interest
-# points_lat = np.array([0, 5, 5, 0, -5, -5, -5, 0, 5]) + site_lat
-# points_lon = np.array([0, 0, 5, 5, 5, 0, -5, -5, -5]) + site_lon
-# points = range(9)
 
 # creating a grid system with +/- 5 and 10 degrees latitude and longitude from the site of interest
 points_lat = np.array([0, 5, 5, 0, -5, -5, -5, 0, 5, 10, 10, 0, -10, -10, -10, 0, 10]) + site_lat
 points_lon = np.array([0, 0, 5, 5, 5, 0, -5, -5, -5, 0, 10, 10, 10, 0, -10, -10, -10]) + site_lon
 points = range(17)
 
-
 # creating an xarray DataArray for the grid coordinates
 target_lat = xr.DataArray(points_lat, dims=["points"], coords={"points": points})
 target_lon = xr.DataArray(points_lon, dims=["points"], coords={"points": points})
 
 
-years = range(1999, 2024)
+data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'/'meteorological_data'/'ECMWF'/site
+
+
+years = range(2010, 2024)
 
 # loop through the months and years to transform the data
 for fi, yr in enumerate(years):
 
     print(f"Opening {yr}")
 
-    # lists to store data for each year for each of the three levels
+    # lists to store data for each year
+    sp_list = []
+    blh_list = []
+
     u_list_10m = []
     v_list_10m = []
 
@@ -67,8 +64,24 @@ for fi, yr in enumerate(years):
     u_list_500hpa = []
     v_list_500hpa = []
 
+
     for month in range(1, 13):
+        #=======================================================================
         # extracting the data for each month and year
+        extracted_data = xr.open_mfdataset((data_path/'single_levels').glob(f"*{yr}_{month:02d}.nc"))    
+
+        # extracting variables
+        sp = extracted_data['sp']
+        blh = extracted_data['blh']
+
+        # selecting the data for the site of interest
+        sp = sp.interp(latitude=site_lat, longitude=site_lon, method='nearest')
+        blh = blh.interp(latitude=site_lat, longitude=site_lon, method='nearest')
+
+        # appending monthly data to year lists
+        sp_list.append(sp)
+        blh_list.append(blh)
+
         #=======================================================================
         # 10m wind
         # open the data for the month and year
@@ -112,9 +125,18 @@ for fi, yr in enumerate(years):
         u_list_500hpa.append(u)
         v_list_500hpa.append(v)
         #=======================================================================
-        
+     
     
     # concatenating the monthly data along the 'time' dimension and saving the combined data for the year
+    #=======================================================================
+    # surface pressure
+    sp_combined = xr.concat(sp_list, dim='time')
+    sp_combined.to_netcdf(data_path/'surface_pressure'/f"{site}_sp_{yr}.nc")
+
+    # boundary layer height
+    blh_combined = xr.concat(blh_list, dim='time')
+    blh_combined.to_netcdf(data_path/'boundary_layer_height'/f"{site}_blh_{yr}.nc")
+
     #=======================================================================
     # 10m wind
     u_combined_10m = xr.concat(u_list_10m, dim='time')
