@@ -1,14 +1,14 @@
-site = 'RPB'
+site = 'CGO'
 compound = "cfc-12"
 
 site_dict = {"MHD":"Mace Head, Ireland", 
              "RPB":"Ragged Point, Barbados", 
-             "CG":"Cape Grim, Australia", 
+             "CGO":"Cape Grim, Australia", 
              "GSN":"Gosan, South Korea",
-             "J1":"Jungfraujoch, Switzerland", 
-             "M5":"Monte Cimone, Italy", 
-             "TH":"Trinidad Head, USA", 
-             "ZE":"Zeppelin, Svalbard",
+             "JFJ":"Jungfraujoch, Switzerland", 
+             "CMN":"Monte Cimone, Italy", 
+             "THD":"Trinidad Head, USA", 
+             "ZEP":"Zeppelin, Svalbard",
              "SMO": "Cape Matatula, American Samoa"}
 
 site_coords_dict = {"MHD":[53.3267, -9.9046], 
