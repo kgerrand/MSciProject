@@ -448,11 +448,10 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     ax.minorticks_on()
 
     df_actual_monthly["mf"].plot(ax=ax, label="True Baselines", color='darkgreen', alpha=0.75, linewidth=1.5)
-    if site == 'MHD':
-        df_pred_monthly["mf"].plot(ax=ax, label="Predicted Baselines", color='blue', linestyle='--', linewidth=1.5)
-    elif site == 'GSN':
+    if site == 'GSN':
         df_pred_monthly["mf"].plot(ax=ax, label="Predicted Baselines", color='blue', linestyle='--', marker='s', markersize=3, linewidth=1.5)
-
+    else:
+        df_pred_monthly["mf"].plot(ax=ax, label="Predicted Baselines", color='blue', linestyle='--', linewidth=1.5)
 
     # adding standard deviation shading
     upper_actual = df_actual_monthly["mf"] + std_actual_monthly['mf']
