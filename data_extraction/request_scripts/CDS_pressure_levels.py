@@ -18,7 +18,7 @@ c = cdsapi.Client()
 
 
 # change to extract data for different AGAGE sites
-site = 'BA'
+site = 'ZEP'
 
 site_coords_dict = {"MHD":[53.3267, -9.9046], 
                     "RPB":[13.1651, -59.4321], 
@@ -34,24 +34,11 @@ site_coords_dict = {"MHD":[53.3267, -9.9046],
 site_lat = site_coords_dict[site][0]
 site_lon = site_coords_dict[site][1]
 
-# finding latitude and longitude limits - 12 degrees in each direction
-max_lat = site_lat + 12
-min_lat = site_lat - 12
-max_lon = site_lon + 12
-min_lon = site_lon - 12
-
-# checking limits of lat/lon extremes
-if max_lat > 90:
-    max_lat = max_lat - 90
-
-if min_lat < -90:
-    min_lat = min_lat + 90
-
-if max_lon > 180:
-    max_lon = max_lon - 180
-
-if min_lon < -180:
-    min_lon = min_lon + 180
+# finding latitude and longitude limits - 11 degrees in each direction (wind grid uses ± 10)
+max_lat = site_lat + 11
+min_lat = site_lat - 11
+max_lon = site_lon + 11
+min_lon = site_lon - 11
 
 
 # output_path = Path.home()/'Year4'/'MSciProject'/'data'/'single_levels'
