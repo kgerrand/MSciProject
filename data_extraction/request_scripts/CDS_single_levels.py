@@ -18,7 +18,7 @@ c = cdsapi.Client()
 
 
 # change to extract data for different AGAGE sites
-site = 'CG'
+site = 'ZEP'
 
 site_coords_dict = {"MHD":[53.3267, -9.9046], 
                     "RPB":[13.1651, -59.4321], 
@@ -33,6 +33,25 @@ site_coords_dict = {"MHD":[53.3267, -9.9046],
 # extract site coordinates
 site_lat = site_coords_dict[site][0]
 site_lon = site_coords_dict[site][1]
+
+# finding latitude and longitude limits - 12 degrees in each direction
+max_lat = site_lat + 12
+min_lat = site_lat - 12
+max_lon = site_lon + 12
+min_lon = site_lon - 12
+
+# checking limits of lat/lon extremes
+if max_lat > 90:
+    max_lat = max_lat - 90
+
+if min_lat < -90:
+    min_lat = min_lat + 90
+
+if max_lon > 180:
+    max_lon = max_lon - 180
+
+if min_lon < -180:
+    min_lon = min_lon + 180
 
 
 # output_path = Path.home()/'Year4'/'MSciProject'/'data'/'single_levels'
@@ -94,7 +113,7 @@ def main(year):
                     ],
                         
                     'format': 'netcdf',
-                    'area': [(site_lat+12),(site_lon-12), (site_lat-12),(site_lon+12),],
+                    'area': [(max_lat),(min_lon), (min_lat),(max_lon),],
                 },
                 output_filename)
                 
