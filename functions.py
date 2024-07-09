@@ -289,7 +289,9 @@ def make_predictions(model):
         df_predict.drop(columns=["flag"], inplace=True)
         
         print("Predictons made using neural network model.")
-        y_pred = model.predict(df_predict.reset_index(drop=True))
+        class_probabilities_predict = model.predict_proba(df_predict.reset_index(drop=True))
+        threshold = config.confidence_threshold
+        y_pred = (class_probabilities_predict[:,1] >= threshold).astype(int)
         data_balanced_df["predicted_flag"] = y_pred
 
     # if model is RANDOM FOREST - predict based on class probabilities using PCA dataset
@@ -297,7 +299,7 @@ def make_predictions(model):
         df_predict = data_pca.copy()
         df_predict.drop(columns=["flag"], inplace=True)
 
-        print("Predictions made using class probabilities from random forest model.")
+        print("Predictions made using random forest model.")
         class_probabilities_predict = model.predict_proba(df_predict.reset_index(drop=True))
 
         threshold = config.confidence_threshold
@@ -1061,4 +1063,38 @@ def find_closest_lat_lon(coords, dataset):
     
     return closest_lat.values, closest_lon.values
 
+#=======================================================================
+
+
+## RADON FUNCTIONS
+#=======================================================================
+def extract_radon_baselines(site):
+    """
+    Extracts radon baselines by computing the fifth percentile, per month.
+
+    Returns:
+    - ds_radon_flags (Dataset): A DataFrame containing the radon data and the radon baselines.
+    """
+
+    ds_radon_flags = xr.open_mfdataset((data_path/'radon_data').glob(f"{site}*.nc"))  
+
+    # Loop through all unique years in the dataset
+    for year in np.unique(ds_radon_flags.time.dt.year.values):
+        # Filter the dataset for the current year
+        year_data = ds_radon_flags.sel(time=ds_radon_flags.time.dt.year == year)
+        
+        # Loop through all unique months in the filtered dataset for the current year
+        for month in np.unique(year_data.time.dt.month.values):
+
+            month_data = year_data.sel(time=year_data.time.dt.month == month)
+
+            # creating a 5th percentile for the given month
+            rechunked_month_data = month_data['radon'].chunk({'time': -1})
+            month_data_percentile = float(rechunked_month_data.quantile(0.05))
+
+            # adding another data variable to dataset stating baseline/no baseline based on percentile
+            month_data['baseline'] = month_data['radon'] < month_data_percentile
+            ds_radon_flags = xr.concat([ds_radon_flags, month_data], dim='time')
+
+    return ds_radon_flags
 #=======================================================================
