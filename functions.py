@@ -187,8 +187,28 @@ def add_shifted_time(df, points):
 #=======================================================================
 
 
-
 ## MODEL EVALUATION FUNCTIONS
+#=======================================================================
+def permute_group(df, group):
+    """
+    Permutes the values in a specified group of columns in the given DataFrame
+
+    Args:
+    - df (pandas.DataFrame): The DataFrame containing the data to be permuted
+    - group (list): A list of column names representing the group of columns to be permuted
+
+    Returns:
+    - permuted_df (pandas.DataFrame): A new DataFrame with the values in the specified group of columns permuted
+
+    """
+    permuted_df = df.copy()
+    shuffled_indices = np.random.permutation(df.index)
+    
+    for column in group:
+        permuted_df[column] = df.loc[shuffled_indices, column].values
+
+    return permuted_df
+
 #=======================================================================
 def access_info(model_name=None):
     """
@@ -312,6 +332,22 @@ def make_predictions(model):
     columns_to_keep = ["flag", "predicted_flag"]
     results = data_balanced_df[columns_to_keep].copy()
     results["mf"] = data_balanced_ds.mf.values
+    results.index = pd.to_datetime(results.index)
+
+    # removing months with insufficient/missing data
+    for year in range(results.index.min().year, results.index.max().year):
+        for month in range(1, 13):
+            # print(year, month)
+            
+            # collecting all the data for the given month
+            df_month = results.loc[(results.index.year == year) & (results.index.month == month)]
+            
+            # counting the number of baseline datapoints
+            n_baseline_pred = int(df_month["predicted_flag"].sum())
+
+            if n_baseline_pred < 3:
+                # dropping month from the dataframe as insufficient data
+                results = results.drop(df_month.index)
 
     return results
 
@@ -415,8 +451,7 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     Returns:
     - None
     """    
-    results = results.dropna()
-    site, site_name, compound = access_info()
+    site, _, _ = access_info()
 
     # extracting flags and predicted flags
     df_pred = results.where(results["predicted_flag"] == 1).dropna()
@@ -429,6 +464,7 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     if start_year and end_year:
         df_pred = df_pred.loc[f"{start_year}-01-01":f"{end_year}-12-31"]
         df_actual = df_actual.loc[f"{start_year}-01-01":f"{end_year}-12-31"]
+
 
     # resampling to monthly averages
     df_pred_monthly = df_pred.resample('M').mean()
@@ -468,17 +504,8 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     if start_year and end_year:
         pass
     else:
-        # Mace Head model - trained on 2013-2018, validated on 2019 (NN) or 2016-2018, validated on 2019 (RF)
-        if site == 'MHD' and model_type == 'nn':
-            ax.axvspan(datetime(2013,1,1), datetime(2018,12,31), alpha=0.3, label="Training Set", color='grey')
-            ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
-
-        elif site == 'MHD' and model_type == 'rf':
-            ax.axvspan(datetime(2016,1,1), datetime(2018,12,31), alpha=0.3, label="Training Set", color='grey')
-            ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
-
         # Gosan model
-        elif site == 'GSN' and "finetuned" not in model_name and model_type == 'nn':
+        if site == 'GSN' and "finetuned" not in model_name and model_type == 'nn':
             ax.axvspan(datetime(2009,1,1), datetime(2013,12,31), alpha=0.3, label="Training Set", color='grey')
             ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
 
@@ -492,6 +519,11 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
 
         elif site == 'GSN' and "finetuned" in model_name and model_type == 'rf':
             ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Fine-tuning Set", color='orange')
+
+        # all other sites trained on 2018 and validated on 2019
+        else:
+            ax.axvspan(datetime(2018,1,1), datetime(2018,12,31), alpha=0.3, label="Training Set", color='grey')
+            ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
 
 
     # adding tolerance range based on 3 standard deviations
