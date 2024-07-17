@@ -34,7 +34,7 @@ site_coords_dict = {"MHD":[53.3267, -9.9046],
 site_lat = site_coords_dict[site][0]
 site_lon = site_coords_dict[site][1]
 
-# finding latitude and longitude limits - 11 degrees in each direction (wind grid uses ± 10)
+# finding latitude and longitude limits - 11 degrees in each direction (wind grid uses +/- 10)
 max_lat = site_lat + 11
 min_lat = site_lat - 11
 max_lon = site_lon + 11
