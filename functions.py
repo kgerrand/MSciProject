@@ -12,7 +12,7 @@ from pathlib import Path
 from joblib import load
 import calendar
 
-import config as c
+import config as cfg
 
 data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'
 
@@ -222,9 +222,9 @@ def access_info():
     - site_name (str): The name of the site corresponding to the site
     - compound (str): The compound as defined in config.py
     """
-    site = c.site
-    site_name = c.site_dict[site]
-    compound = c.compound
+    site = cfg.site
+    site_name = cfg.site_dict[site]
+    compound = cfg.compound
 
     return site, site_name, compound
     
@@ -318,7 +318,7 @@ def make_predictions(model):
         
         print("Predictons made using neural network model.")
         class_probabilities_predict = model.predict_proba(df_predict.reset_index(drop=True))
-        threshold = c.confidence_threshold
+        threshold = cfg.confidence_threshold
         y_pred = (class_probabilities_predict[:,1] >= threshold).astype(int)
         data_balanced_df["predicted_flag"] = y_pred
 
@@ -330,7 +330,7 @@ def make_predictions(model):
         print("Predictions made using random forest model.")
         class_probabilities_predict = model.predict_proba(df_predict.reset_index(drop=True))
 
-        threshold = c.confidence_threshold
+        threshold = cfg.confidence_threshold
         y_pred = (class_probabilities_predict[:,1] >= threshold).astype(int)
 
         data_balanced_df["predicted_flag"] = y_pred
@@ -973,7 +973,7 @@ def compare_benchmark_to_model(df_benchmark, percentile, model, start_year=None,
         print("Predictions made using class probabilities from random forest model.")
         class_probabilities_predict = model.predict_proba(df_predict.reset_index(drop=True))
 
-        threshold = c.confidence_threshold
+        threshold = cfg.confidence_threshold
         y_pred = (class_probabilities_predict[:,1] >= threshold).astype(int)
 
         data_balanced_df["predicted_flag"] = y_pred
