@@ -12,7 +12,7 @@ from pathlib import Path
 from joblib import load
 import calendar
 
-import config
+import config as c
 
 data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_files'
 
@@ -210,29 +210,37 @@ def permute_group(df, group):
     return permuted_df
 
 #=======================================================================
-def access_info(model_name=None):
+def access_info():
     """
     Accesses information about the site, site name, and compound
 
     Args:
-    - model_name (str): The name of the model to load
+    - None
 
     Returns:
     - site (str): The site as defined in config.py
     - site_name (str): The name of the site corresponding to the site
     - compound (str): The compound as defined in config.py
+    """
+    site = c.site
+    site_name = c.site_dict[site]
+    compound = c.compound
+
+    return site, site_name, compound
+    
+#=======================================================================
+def access_model(model_name):
+    """
+    Accesses the model with the given name
+
+    Args:
+    - model_name (str): The name of the model to load
+
+    Returns:
     - model: The loaded model
     """
-    site = config.site
-    site_name = config.site_dict[site]
-    compound = config.compound
-
-    if model_name is None:
-        return site, site_name, compound
-    
-    else:
-        model = load(data_path/'saved_files'/model_name)
-        return site, site_name, compound, model
+    model = load(data_path/'saved_files'/model_name)
+    return model
         
 #=======================================================================
 def quantify_noise(results):
@@ -310,7 +318,7 @@ def make_predictions(model):
         
         print("Predictons made using neural network model.")
         class_probabilities_predict = model.predict_proba(df_predict.reset_index(drop=True))
-        threshold = config.confidence_threshold
+        threshold = c.confidence_threshold
         y_pred = (class_probabilities_predict[:,1] >= threshold).astype(int)
         data_balanced_df["predicted_flag"] = y_pred
 
@@ -322,7 +330,7 @@ def make_predictions(model):
         print("Predictions made using random forest model.")
         class_probabilities_predict = model.predict_proba(df_predict.reset_index(drop=True))
 
-        threshold = config.confidence_threshold
+        threshold = c.confidence_threshold
         y_pred = (class_probabilities_predict[:,1] >= threshold).astype(int)
 
         data_balanced_df["predicted_flag"] = y_pred
@@ -530,6 +538,13 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     upper_range = df_actual_monthly["mf"] + 3*(std_actual_monthly['mf'])
     lower_range = df_actual_monthly["mf"] - 3*(std_actual_monthly['mf'])
 
+    # creating ranges for 5 and 10 standard deviations to quantify anomalies further
+    five_upper_range = df_actual_monthly["mf"] + 5*(std_actual_monthly['mf'])
+    five_lower_range = df_actual_monthly["mf"] - 5*(std_actual_monthly['mf'])
+
+    ten_upper_range = df_actual_monthly["mf"] + 10*(std_actual_monthly['mf'])
+    ten_lower_range = df_actual_monthly["mf"] - 10*(std_actual_monthly['mf'])
+
     # calculating overall standard deviation for arrows
     overall_std = df_actual_monthly["mf"].std()
 
@@ -537,6 +552,8 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     # adding labels to points outside tolerance range
     # looping through in this way as indexes don't always match up (i.e. in the case that no predictions are made in a month)
     anomalous_months = []
+    five_std = []
+    ten_std = []
     
     for idx, row in df_pred_monthly.iterrows():
         if idx in upper_range.index and row["mf"] >= upper_range.loc[idx]:
@@ -548,6 +565,12 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
                         horizontalalignment='center', verticalalignment='bottom')
             date = idx.strftime('%Y-%m')
             anomalous_months.append(date)
+
+            if row["mf"] <= five_upper_range.loc[idx]:
+                five_std.append(date)
+            
+            if row["mf"] <= ten_upper_range.loc[idx]:
+                ten_std.append(date)
         
         elif idx in upper_range.index and row["mf"] <= lower_range.loc[idx]:
             arrow_end = row["mf"] - (overall_std * 0.5)
@@ -559,20 +582,44 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
             date = idx.strftime('%Y-%m')
             anomalous_months.append(date)
 
+            if row["mf"] >= five_lower_range.loc[idx]:
+                five_std.append(date)
+
+            if row["mf"] >= ten_lower_range.loc[idx]:
+                ten_std.append(date)
+
     plt.ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
     plt.xlabel("")
     # plt.title(f"Comparing True and Predicted Baseline Monthly Means for {compound} at {site_name}", fontsize=15)
     plt.legend(loc="best", fontsize=12)
     plt.show()
 
-    print(f"Number of anomalies: {len(anomalous_months)}")
-    print(f"Anomalous months: {anomalous_months}")
+    if len(anomalous_months) == 0:
+        print(f"No anomalies detected.")
 
-    # calculates percentage of non-anomalous months
-    total_months = len(df_pred_monthly)
-    non_anomalous_months = total_months - len(anomalous_months)
-    percentage = non_anomalous_months / total_months * 100
-    print(f"Percentage of non-anomalous months: {percentage:.1f}%")
+    else:
+        print(f"Number of anomalies (>3σ): {len(anomalous_months)}")
+        print(f"Anomalous month(s): {anomalous_months}")
+
+        # printing percentage of anomalies within 5 and 10 standard deviations, when applicable       
+        print(f"Number of anomalies within 5σ: {len(five_std)} ({len(five_std)/len(anomalous_months)*100:.1f}%)")
+
+        print(f"Number of anomalies within 10σ: {len(ten_std)} ({len(ten_std)/len(anomalous_months)*100:.1f}%)")
+
+        # checking all months in 5_std are in 10_std
+        assert all(x in ten_std for x in five_std)
+
+        # printing the months that are anomalous and not within 10 standard deviations
+        significant_anomalies = [month for month in anomalous_months if month not in ten_std]
+
+        if len(significant_anomalies) > 0:
+            print(f"Significant anomalies (>10σ): {significant_anomalies}")    
+
+        # calculates percentage of non-anomalous months
+        total_months = len(df_pred_monthly)
+        non_anomalous_months = total_months - len(anomalous_months)
+        percentage = non_anomalous_months / total_months * 100
+        print(f"Percentage of non-anomalous months: {percentage:.1f}%")  
 
 #=======================================================================
 def analyse_anomalies(results, anomalies_list):
@@ -926,7 +973,7 @@ def compare_benchmark_to_model(df_benchmark, percentile, model, start_year=None,
         print("Predictions made using class probabilities from random forest model.")
         class_probabilities_predict = model.predict_proba(df_predict.reset_index(drop=True))
 
-        threshold = config.confidence_threshold
+        threshold = c.confidence_threshold
         y_pred = (class_probabilities_predict[:,1] >= threshold).astype(int)
 
         data_balanced_df["predicted_flag"] = y_pred
