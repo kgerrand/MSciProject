@@ -602,9 +602,9 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
         print(f"Anomalous month(s): {anomalous_months}")
 
         # printing percentage of anomalies within 5 and 10 standard deviations, when applicable       
-        print(f"Number of anomalies within 5σ: {len(five_std)} ({len(five_std)/len(anomalous_months)*100:.1f}%)")
+        print(f"Number of anomalies within 5σ: {len(five_std)}/{len(anomalous_months)} ({len(five_std)/len(anomalous_months)*100:.1f}%)")
 
-        print(f"Number of anomalies within 10σ: {len(ten_std)} ({len(ten_std)/len(anomalous_months)*100:.1f}%)")
+        print(f"Number of anomalies within 10σ: {len(ten_std)}/{len(anomalous_months)} ({len(ten_std)/len(anomalous_months)*100:.1f}%)")
 
         # checking all months in 5_std are in 10_std
         assert all(x in ten_std for x in five_std)
