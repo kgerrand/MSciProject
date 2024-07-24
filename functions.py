@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from joblib import load
 import calendar
+from scipy.stats import linregress
 
 import config as cfg
 
@@ -428,18 +429,24 @@ def plot_predictions(results):
 
     _, site_name, compound = access_info()
 
-    fig, axes = plt.subplots(2,1, figsize=(15,10))
+    fig, axes = plt.subplots(3,1, figsize=(15,20))
     sns.set_theme(style='ticks', font='Arial')
 
     # plot 1 - true baselines
     results["mf"].plot(ax=axes[0], label="All Data", color='grey', linewidth=1, alpha=0.8)
-    results["mf"].where(results["flag"] == 1).plot(ax=axes[0], label="True Baselines", color='darkgreen', linewidth=1.5)
+    results["mf"].where(results["flag"] == 1).plot(ax=axes[0], label="True Baselines", color='orange', linewidth=1.5)
     axes[0].legend(loc="lower right", fontsize=12)
 
     # plot 2 - predicted baselines
     results["mf"].plot(ax=axes[1], label="All Data", color='grey', linewidth=1, alpha=0.8)
     results["mf"].where(results["predicted_flag"] == 1).plot(ax=axes[1], label="Predicted Baselines", color='darkblue', linewidth=1.5)
     axes[1].legend(loc="lower right", fontsize=12)
+
+    # plot 3 - comparison
+    # results["mf"].plot(ax=axes[2], label="All Data", color='grey', linewidth=1, alpha=0.8)
+    results["mf"].where(results["flag"] == 1).plot(ax=axes[2], label="True Baselines", color='orange', linewidth=1.5)
+    results["mf"].where(results["predicted_flag"] == 1).plot(ax=axes[2], label="Predicted Baselines", color='darkblue', linewidth=1.5, linestyle='--')
+    axes[2].legend(loc="lower right", fontsize=12)
 
     # setting overall title and labels
     fig.suptitle(f"{compound} at {site_name}", fontsize=20, y=0.92)
@@ -449,7 +456,7 @@ def plot_predictions(results):
         ax.set_ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
     
 #=======================================================================
-def plot_predictions_monthly(results, model_name, start_year=None, end_year=None):
+def plot_predictions_monthly(results, model_name, start_year=None, end_year=None, show_anomalies=True, legend=True):
     """
     Plots the predicted baselines and their standard deviations against the true baselines and their standard deviations, highlighting any points outside three standard deviations.
 
@@ -558,11 +565,12 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     for idx, row in df_pred_monthly.iterrows():
         if idx in upper_range.index and row["mf"] >= upper_range.loc[idx]:
             arrow_end = row["mf"] + (overall_std * 0.5)
-            ax.annotate(idx.strftime('%B %Y'),
-                        xy=(idx, row["mf"]),
-                        xytext=(idx, arrow_end),
-                        arrowprops=dict(facecolor='black', shrink=0.05),
-                        horizontalalignment='center', verticalalignment='bottom')
+            if show_anomalies:
+                ax.annotate(idx.strftime('%B %Y'),
+                            xy=(idx, row["mf"]),
+                            xytext=(idx, arrow_end),
+                            arrowprops=dict(facecolor='black', shrink=0.05),
+                            horizontalalignment='center', verticalalignment='bottom')
             date = idx.strftime('%Y-%m')
             anomalous_months.append(date)
 
@@ -574,11 +582,12 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
         
         elif idx in upper_range.index and row["mf"] <= lower_range.loc[idx]:
             arrow_end = row["mf"] - (overall_std * 0.5)
-            ax.annotate(idx.strftime('%B %Y'),
-                        xy=(idx, row["mf"]),
-                        xytext=(idx, arrow_end),
-                        arrowprops=dict(facecolor='black', shrink=0.05),
-                        horizontalalignment='center', verticalalignment='bottom')
+            if show_anomalies:
+                ax.annotate(idx.strftime('%B %Y'),
+                            xy=(idx, row["mf"]),
+                            xytext=(idx, arrow_end),
+                            arrowprops=dict(facecolor='black', shrink=0.05),
+                            horizontalalignment='center', verticalalignment='bottom')
             date = idx.strftime('%Y-%m')
             anomalous_months.append(date)
 
@@ -591,7 +600,11 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     plt.ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
     plt.xlabel("")
     # plt.title(f"Comparing True and Predicted Baseline Monthly Means for {compound} at {site_name}", fontsize=15)
-    plt.legend(loc="best", fontsize=12)
+
+
+    if legend:
+        plt.legend(loc="best", fontsize=12)
+
     plt.show()
 
     if len(anomalous_months) == 0:
@@ -620,6 +633,75 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
         non_anomalous_months = total_months - len(anomalous_months)
         percentage = non_anomalous_months / total_months * 100
         print(f"Percentage of non-anomalous months: {percentage:.1f}%")  
+
+#=======================================================================
+def residual_plots(results, zero=False, normal=False):
+    """
+    Plots the residuals and an associated histogram of the predicted and true baseline values, based on monthly averages.
+
+    Args:
+    - results (pandas.DataFrame): Dataframe containing the predicted flags, true flags, and mf values.
+
+    Returns:
+    - None
+    """
+
+    # calculating residuals
+    df_pred = results.where(results["predicted_flag"] == 1).dropna()
+    df_actual = results.where(results["flag"] == 1).dropna()
+
+    df_pred.index = pd.to_datetime(df_pred.index)
+    df_actual.index = pd.to_datetime(df_actual.index)
+
+    # resampling to monthly averages
+    df_pred_monthly = df_pred.resample('M').mean()
+    df_actual_monthly = df_actual.resample('M').mean()
+    # setting index to year and month only
+    df_pred_monthly.index = df_pred_monthly.index.to_period('M')
+    df_actual_monthly.index = df_actual_monthly.index.to_period('M')
+
+    # calculating residuals
+    residuals = df_pred_monthly["mf"] - df_actual_monthly["mf"]
+
+    # plotting
+    fig, axes = plt.subplots(2,1,figsize=(12,10))
+    sns.set_theme(style='ticks', font='Arial')
+    for ax in axes:
+        ax.minorticks_on()
+
+    # Plot 1 - residuals
+    x_values = df_actual_monthly.index.to_timestamp()
+    axes[0].scatter(x_values, residuals, color='black', label="Residuals", s=25)
+   
+    # adding a line of best fit
+    # cleaning residuals to remove NaN values and using for line of best fit calc
+    clean_residuals = residuals.dropna()
+    slope, intercept, _, _, _ = linregress(range(len(clean_residuals)), clean_residuals)
+    line = slope * np.arange(len(clean_residuals)) + intercept
+    # ensuring x_values matches the cleaned residuals in length and order
+    clean_x_values = x_values[:len(clean_residuals)]
+    # plotting
+    axes[0].plot(clean_x_values, line, color='red', linestyle='--', label="Line of Best Fit", linewidth=2.5)
+
+    # adding a zero line if specified
+    if zero:
+        axes[0].hlines(y=0, xmin=df_actual_monthly.index.min(), xmax=df_actual_monthly.index.max(), 
+                  color='blue', linestyle='-.', label="Zero Line", linewidth=2.5)
+ 
+
+    axes[0].set_ylabel("Residual", fontsize=12, fontstyle='italic')
+    axes[0].set_xlabel("Time", fontsize=12, fontstyle='italic')
+    # ax.set_title("Residual Plot", fontsize=15)
+    axes[0].legend(loc="best", fontsize=12)
+
+
+    # Plot 2 - histogram
+    axes[1].hist(residuals, bins=20, color='grey', edgecolor='black', linewidth=1.5)
+
+    axes[1].set_ylabel("Frequency", fontsize=12, fontstyle='italic')
+    axes[1].set_xlabel("Residual", fontsize=12, fontstyle='italic')
+
+    plt.show()
 
 #=======================================================================
 def analyse_anomalies(results, anomalies_list):
