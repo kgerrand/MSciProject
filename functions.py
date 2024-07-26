@@ -416,70 +416,194 @@ def calc_statistics(results):
     print(f'Mean Absolute Percentage Error: {bold}{mape:.3f}{end}')
 
 #=======================================================================
-def plot_predictions(results):
+def plot_predictions(results, start_date=None, end_date=None,
+                     paper=False, legend=True, legend_pos="best", set_shading=False):
     """
     Plots mole fraction against time, with the predicted baselines and true baselines highlighted.
 
     Args:
     - results (pandas.DataFrame): Dataframe containing the predicted flags, true flags, and mf values.
+    - start_date (str): The date to start visualising the data, if specified. Can be in 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD' format.
+    - end_date (str): The date to end visualising the data, if specified. Can be in 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD' format.
+   
+    - paper (bool): Whether to format the plot for a paper.
+    - legend (bool): Whether to show the legend on the plot.
+    - legend_pos (str): The position of the legend on the plot.
+    - set_shading (bool): Whether to add shading for the training and testing sets.
     
     Returns:
     - None
     """
 
-    _, site_name, compound = access_info()
+    site, site_name, compound = access_info()
 
-    fig, axes = plt.subplots(3,1, figsize=(15,20))
+    if start_date and end_date:
+        # if dates given in 'YYYY' format
+        if len(str(start_date)) == 4:
+            results = results.loc[f"{start_date}-01-01":f"{end_date}-12-31"]
+            start_year = int(start_date)
+            end_year = int(end_date)
+
+        # if dates given in 'YYYY-MM' format
+        elif len(str(start_date)) == 7:
+            results = results.loc[f"{start_date}-01":f"{end_date}-12"]
+            start_year = int(start_date[:4])
+            end_year = int(end_date[:4])
+
+        # if dates given in 'YYYY-MM-DD' format
+        elif len(str(start_date)) == 10:
+            results = results.loc[f"{start_date}":f"{end_date}"]
+            start_year = int(start_date[:4])
+            end_year = int(end_date[:4])
+
+        else:
+            print("Please enter dates in the format 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'.")
+
+
+        fig, axes = plt.subplots(3,1, figsize=(10,15))
+
+    else:
+        fig, axes = plt.subplots(3,1, figsize=(15,20))
+
     sns.set_theme(style='ticks', font='Arial')
 
     # plot 1 - true baselines
-    results["mf"].plot(ax=axes[0], label="All Data", color='grey', linewidth=1, alpha=0.8)
-    results["mf"].where(results["flag"] == 1).plot(ax=axes[0], label="True Baselines", color='orange', linewidth=1.5)
-    axes[0].legend(loc="lower right", fontsize=12)
+    results["mf"].plot(ax=axes[0], label="All Data", color='grey', linewidth=1, alpha=0.5)
+    results["mf"].where(results["flag"] == 1).plot(ax=axes[0], label="NAME/InTEM Baselines", color='#4FBF60', linewidth=1.5)
 
     # plot 2 - predicted baselines
-    results["mf"].plot(ax=axes[1], label="All Data", color='grey', linewidth=1, alpha=0.8)
-    results["mf"].where(results["predicted_flag"] == 1).plot(ax=axes[1], label="Predicted Baselines", color='darkblue', linewidth=1.5)
-    axes[1].legend(loc="lower right", fontsize=12)
+    results["mf"].plot(ax=axes[1], label="All Data", color='grey', linewidth=1, alpha=0.5)
+    results["mf"].where(results["predicted_flag"] == 1).plot(ax=axes[1], label="Predicted Baselines", color='#235391', linewidth=1.5)
 
     # plot 3 - comparison
-    # results["mf"].plot(ax=axes[2], label="All Data", color='grey', linewidth=1, alpha=0.8)
-    results["mf"].where(results["flag"] == 1).plot(ax=axes[2], label="True Baselines", color='orange', linewidth=1.5)
-    results["mf"].where(results["predicted_flag"] == 1).plot(ax=axes[2], label="Predicted Baselines", color='darkblue', linewidth=1.5, linestyle='--')
-    axes[2].legend(loc="lower right", fontsize=12)
+    results["mf"].plot(ax=axes[2], label="All Data", color='grey', linewidth=1, alpha=0.5)
+    results["mf"].where(results["flag"] == 1).plot(ax=axes[2], label="NAME/InTEM Baselines", color='#4FBF60', linewidth=2.5)
+    results["mf"].where(results["predicted_flag"] == 1).plot(ax=axes[2], label="Predicted Baselines", color='#235391', linewidth=1, linestyle='--')
 
-    # setting overall title and labels
-    fig.suptitle(f"{compound} at {site_name}", fontsize=20, y=0.92)
+    # formatting depending on for paper (increased font size) or not, and if user wants shading
+    # fig.suptitle(f"{compound} at {site_name}", fontsize=20, y=0.92)
+
+    if set_shading:
+        # Gosan model
+        if site == 'GSN':
+            if start_year and end_year:
+                # checking training and validation sets within the specified time period, and not shade if not
+                if start_year <= 2013 and end_year >= 2014:
+                    for ax in axes:
+                        ax.axvspan(datetime(2013,1,1), datetime(2014,1,1), alpha=0.3, label="Training Set", color='grey')
+                        ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
+                elif end_year == 2013:
+                    for ax in axes:
+                        ax.axvspan(datetime(2013,1,1), datetime(2014,1,1), alpha=0.3, label="Training Set", color='grey')
+                elif start_year == 2014:
+                    for ax in axes:
+                        ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
+                else:
+                    pass
+            else:
+                for ax in axes:
+                    ax.axvspan(datetime(2013,1,1), datetime(2014,1,1), alpha=0.3, label="Training Set", color='grey')
+                    ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
+
+        # all other sites trained on 2018 and validated on 2019
+        else:
+            if start_date and end_date:
+                if start_year <= 2018 and end_year >= 2019:
+                    for ax in axes:
+                        ax.axvspan(datetime(2018,1,1), datetime(2019,1,1), alpha=0.3, label="Training Set", color='grey')
+                        ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
+                elif end_year == 2018:
+                    for ax in axes:
+                        ax.axvspan(datetime(2018,1,1), datetime(2019,1,1), alpha=0.3, label="Training Set", color='grey')
+                elif start_year == 2019:
+                    for ax in axes:
+                        ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
+                else:
+                    pass
+            else:
+                for ax in axes:
+                    ax.axvspan(datetime(2018,1,1), datetime(2019,1,1), alpha=0.3, label="Training Set", color='grey')
+                    ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
 
     for ax in axes:
-        ax.set_xlabel("Time", fontsize=12, fontstyle='italic')
-        ax.set_ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
+
+        if paper:
+            ax.set_xlabel("")
+            ax.set_ylabel("mole fraction in air / ppt", fontsize=16, fontstyle='italic')
+
+            ax.tick_params(axis='both', which='major', labelsize=14, rotation=0)
+            ax.tick_params(axis='both', which='minor', labelsize=12, rotation=0)
+            for tick in ax.get_xticklabels():
+                tick.set_ha('center')
+
+            if legend:
+                ax.legend(loc=legend_pos, fontsize=14)
+                
+        else:
+            ax.set_xlabel("")
+            ax.set_ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
+
+            ax.tick_params(axis='both', which='major', labelsize=10, rotation=0)
+            ax.tick_params(axis='both', which='minor', labelsize=8, rotation=0)
+            for tick in ax.get_xticklabels():
+                tick.set_ha('center')
+
+            if legend:
+                ax.legend(loc=legend_pos, fontsize=12)
     
 #=======================================================================
-def plot_predictions_monthly(results, model_name, start_year=None, end_year=None, show_anomalies=True, legend=True):
+def plot_predictions_monthly(results, start_date=None, end_date=None, 
+                             show_anomalies=True, legend=True, legend_pos='best', paper=False, title=False, set_shading=False):
     """
     Plots the predicted baselines and their standard deviations against the true baselines and their standard deviations, highlighting any points outside three standard deviations.
 
     Args:
     - results (pandas.DataFrame): Dataframe containing the predicted flags, true flags, and mf values.
+    - start_date (int): The date to start visualising the data, if specified.
+    - end_date (int): The date to end visualising the data, if specified.
+
+    - show_anomalies (bool): Whether to show the anomalies on the plot.
+    - legend (bool): Whether to show the legend on the plot.
+    - legend_pos (str): The position of the legend on the plot.
+    - paper (bool): Whether to format the plot for a paper.
+    - title (bool): Whether to show the title on the plot.
+    - set_shading (bool): Whether to add shading for the training and testing sets.
 
     Returns:
     - None
     """    
-    site, _, _ = access_info()
+    site, site_name, compound = access_info()
 
-    # extracting flags and predicted flags
+    # filtering to only show the years specified
+    if start_date and end_date:
+        # if dates given in 'YYYY' format
+        if len(str(start_date)) == 4:
+            results = results.loc[f"{start_date}-01-01":f"{end_date}-12-31"]
+            start_year = int(start_date)
+            end_year = int(end_date)
+
+        # if dates given in 'YYYY-MM' format
+        elif len(str(start_date)) == 7:
+            results = results.loc[f"{start_date}-01":f"{end_date}-12"]
+            start_year = int(start_date[:4])
+            end_year = int(end_date[:4])
+
+        # if dates given in 'YYYY-MM-DD' format
+        elif len(str(start_date)) == 10:
+            results = results.loc[f"{start_date}":f"{end_date}"]
+            start_year = int(start_date[:4])
+            end_year = int(end_date[:4])
+
+        else:
+            print("Please enter dates in the format 'YYYY', 'YYYY-MM', or 'YYYY-MM-DD'.")
+
+    
+    # extracting flags and predicted flags based on results df
     df_pred = results.where(results["predicted_flag"] == 1).dropna()
     df_actual = results.where(results["flag"] == 1).dropna()
 
     df_pred.index = pd.to_datetime(df_pred.index)
     df_actual.index = pd.to_datetime(df_actual.index)
-
-    # filtering to only show the years specified
-    if start_year and end_year:
-        df_pred = df_pred.loc[f"{start_year}-01-01":f"{end_year}-12-31"]
-        df_actual = df_actual.loc[f"{start_year}-01-01":f"{end_year}-12-31"]
-
 
     # resampling to monthly averages
     df_pred_monthly = df_pred.resample('M').mean()
@@ -513,32 +637,39 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
     ax.fill_between(df_actual_monthly.index, lower_actual, upper_actual, color='green', alpha=0.2, label="True Baseline Standard Deviation")
 
     # adding shading for training/validation/finetuning sets if visualised in chosen time period
-
-    model_type = model_name[:2]
-
-    if start_year and end_year:
-        pass
-    else:
+    if set_shading:
         # Gosan model
-        if site == 'GSN' and "finetuned" not in model_name and model_type == 'nn':
-            ax.axvspan(datetime(2009,1,1), datetime(2013,12,31), alpha=0.3, label="Training Set", color='grey')
-            ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
-
-        elif site == 'GSN' and "finetuned" not in model_name and model_type == 'rf':
-            ax.axvspan(datetime(2011,1,1), datetime(2013,12,31), alpha=0.3, label="Training Set", color='grey')
-            ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
-
-        # Gosan finetuned model - finetuned on 2011-2014 for NN and 2014 for RF
-        elif site == 'GSN' and "finetuned" in model_name and model_type == 'nn':
-            ax.axvspan(datetime(2011,1,1), datetime(2014,12,31), alpha=0.2, label="Fine-tuning Set", color='orange')
-
-        elif site == 'GSN' and "finetuned" in model_name and model_type == 'rf':
-            ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Fine-tuning Set", color='orange')
+        if site == 'GSN':
+            if start_date and end_date:
+                # checking training and validation sets within the specified time period, and not shade if not
+                if start_year <= 2013 and end_year >= 2014:
+                    ax.axvspan(datetime(2013,1,1), datetime(2014,1,1), alpha=0.3, label="Training Set", color='grey')
+                    ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
+                elif end_year <= 2013:
+                    ax.axvspan(datetime(2013,1,1), datetime(2014,1,1), alpha=0.3, label="Training Set", color='grey')
+                elif start_year >= 2014:
+                    ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
+                else:
+                    pass
+            else:
+                ax.axvspan(datetime(2013,1,1), datetime(2014,1,1), alpha=0.3, label="Training Set", color='grey')
+                ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
 
         # all other sites trained on 2018 and validated on 2019
         else:
-            ax.axvspan(datetime(2018,1,1), datetime(2018,12,31), alpha=0.3, label="Training Set", color='grey')
-            ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
+            if start_year and end_year:
+                if start_year <= 2018 and end_year >= 2019:
+                    ax.axvspan(datetime(2018,1,1), datetime(2019,1,1), alpha=0.3, label="Training Set", color='grey')
+                    ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
+                elif end_year <= 2018:
+                    ax.axvspan(datetime(2018,1,1), datetime(2019,1,1), alpha=0.3, label="Training Set", color='grey')
+                elif start_year >= 2019:
+                    ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
+                else:
+                    pass
+            else:
+                ax.axvspan(datetime(2018,1,1), datetime(2019,1,1), alpha=0.3, label="Training Set", color='grey')
+                ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
 
 
     # adding tolerance range based on 3 standard deviations
@@ -597,16 +728,33 @@ def plot_predictions_monthly(results, model_name, start_year=None, end_year=None
             if row["mf"] >= ten_lower_range.loc[idx]:
                 ten_std.append(date)
 
-    plt.ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
-    plt.xlabel("")
-    # plt.title(f"Comparing True and Predicted Baseline Monthly Means for {compound} at {site_name}", fontsize=15)
+    if paper:
+        ax.set_ylabel("mole fraction in air / ppt", fontsize=16, fontstyle='italic')
+        ax.set_xlabel("")
+        ax.tick_params(axis='both', which='major', labelsize=14)
+        ax.tick_params(axis='both', which='minor', labelsize=12)
 
+        if legend:
+            ax.legend(loc=legend_pos, fontsize=14)
 
-    if legend:
-        plt.legend(loc="best", fontsize=12)
+        if title:
+            ax.set_title(f"Comparing True and Predicted Baseline Monthly Means for {compound} at {site_name}", fontsize=16)
+    
+    else:
+        ax.set_ylabel("mole fraction in air / ppt", fontsize=12, fontstyle='italic')
+        ax.set_xlabel("")
+
+        if legend:
+            ax.legend(loc=legend_pos, fontsize=12)
+
+        if title:
+            ax.set_title(f"Comparing True and Predicted Baseline Monthly Means for {compound} at {site_name}", fontsize=15)
+
 
     plt.show()
 
+
+    # printing anomalies information
     if len(anomalous_months) == 0:
         print(f"No anomalies detected.")
 
