@@ -222,12 +222,14 @@ def access_info():
     - site (str): The site as defined in config.py
     - site_name (str): The name of the site corresponding to the site
     - compound (str): The compound as defined in config.py
+    - model_type (str): The type of model as defined in config.py
     """
     site = cfg.site
     site_name = cfg.site_dict[site]
     compound = cfg.compound
+    model_type = cfg.model_type
 
-    return site, site_name, compound
+    return site, site_name, compound, model_type
     
 #=======================================================================
 def access_model(model_name):
@@ -257,7 +259,7 @@ def quantify_noise(results):
     - None
     """
 
-    _, _, compound = access_info()
+    _, _, compound, _ = access_info()
 
     # extracting true baseline values
     df_actual = results.where(results["flag"] == 1).dropna()
@@ -292,7 +294,7 @@ def make_predictions(model):
     - results (pandas.DataFrame): DataFrame containing the predicted flags, actual flags, and mf values.
     """
 
-    site, _, compound = access_info()
+    site, _, compound, _ = access_info()
 
     # load in data from baseline_setup.ipynb
     data_balanced_df = pd.read_csv(data_path/'saved_files'/f'for_model_{compound}_{site}.csv', index_col='time')
@@ -435,7 +437,7 @@ def plot_predictions(results, start_date=None, end_date=None,
     - None
     """
 
-    site, site_name, compound = access_info()
+    site, site_name, compound, _ = access_info()
 
     if start_date and end_date:
         # if dates given in 'YYYY' format
@@ -572,7 +574,7 @@ def plot_predictions_monthly(results, start_date=None, end_date=None,
     Returns:
     - None
     """    
-    site, site_name, compound = access_info()
+    site, site_name, compound, _ = access_info()
 
     # filtering to only show the years specified
     if start_date and end_date:
@@ -783,18 +785,22 @@ def plot_predictions_monthly(results, start_date=None, end_date=None,
         print(f"Percentage of non-anomalous months: {percentage:.1f}%")  
 
 #=======================================================================
-def residual_plots(results, zero=False, normal=False):
+def calc_residuals(results, save=False):
     """
-    Plots the residuals and an associated histogram of the predicted and true baseline values, based on monthly averages.
+    Calculates and standardises the residuals between the predicted and true baseline values, based on monthly averages.
 
     Args:
     - results (pandas.DataFrame): Dataframe containing the predicted flags, true flags, and mf values.
+    - save (bool): Whether to save the residuals to a csv file.
 
     Returns:
-    - None
+    - residuals (pandas.Series): A series containing the standardised residuals.
+    
     """
 
-    # calculating residuals
+    site, _, compound, model_type = access_info()
+
+    # extracting flags
     df_pred = results.where(results["predicted_flag"] == 1).dropna()
     df_actual = results.where(results["flag"] == 1).dropna()
 
@@ -803,13 +809,34 @@ def residual_plots(results, zero=False, normal=False):
 
     # resampling to monthly averages
     df_pred_monthly = df_pred.resample('M').mean()
-    df_actual_monthly = df_actual.resample('M').mean()
-    # setting index to year and month only
     df_pred_monthly.index = df_pred_monthly.index.to_period('M')
+    df_actual_monthly = df_actual.resample('M').mean()
     df_actual_monthly.index = df_actual_monthly.index.to_period('M')
 
     # calculating residuals
     residuals = df_pred_monthly["mf"] - df_actual_monthly["mf"]
+
+    # standardising residuals
+    residuals = (residuals - residuals.mean()) / residuals.std()
+
+    if save:
+        residuals.to_csv(data_path/'saved_files'/f'{model_type}_residuals_{compound}_{site}.csv')
+        print(f"Residuals saved to {model_type}_residuals_{compound}_{site}.csv")
+
+    return residuals
+
+#=======================================================================
+def plot_residuals(residuals, zero=False):
+    """
+    Plots the residuals and an associated histogram of the predicted and true baseline values, based on monthly averages.
+
+    Args:
+    - results (pandas.DataFrame): Dataframe containing the predicted flags, true flags, and mf values.
+    - zero (bool): Whether to add a zero line to the plot.
+
+    Returns:
+    - None
+    """
 
     # plotting
     fig, axes = plt.subplots(2,1,figsize=(12,10))
@@ -818,7 +845,7 @@ def residual_plots(results, zero=False, normal=False):
         ax.minorticks_on()
 
     # Plot 1 - residuals
-    x_values = df_actual_monthly.index.to_timestamp()
+    x_values = residuals.index.to_timestamp()
     axes[0].scatter(x_values, residuals, color='black', label="Residuals", s=25)
    
     # adding a line of best fit
@@ -833,7 +860,7 @@ def residual_plots(results, zero=False, normal=False):
 
     # adding a zero line if specified
     if zero:
-        axes[0].hlines(y=0, xmin=df_actual_monthly.index.min(), xmax=df_actual_monthly.index.max(), 
+        axes[0].hlines(y=0, xmin=residuals.index.min(), xmax=residuals.index.max(), 
                   color='blue', linestyle='-.', label="Zero Line", linewidth=2.5)
  
 
@@ -852,7 +879,7 @@ def residual_plots(results, zero=False, normal=False):
     plt.show()
 
 #=======================================================================
-def analyse_anomalies(results, anomalies_list):
+def analyse_anomalies(results, anomalies_list, title=False):
     """
     Plots a given set of anomalous months, comparing the predicted baselines to the true baselines.
     Works when considering two or more anomalous months.
@@ -860,12 +887,13 @@ def analyse_anomalies(results, anomalies_list):
     Args:
     - results (pandas.DataFrame): Dataframe containing the predicted flags, true flags, and mf values.
     - anomalies_list (list): A list of strings representing the anomalous months in the format 'YYYY-MM'.
+    - title (bool): Whether to show the title on the plot.
 
     Returns:
     - None
     """   
 
-    _, site_name, compound = access_info()
+    _, site_name, compound, _ = access_info()
 
     def get_days(month):
         """
@@ -1000,8 +1028,9 @@ def analyse_anomalies(results, anomalies_list):
                 percentage = counts[i] / month["mf"].count() * 100
                 axs[n,1].text(i, counts[i], f"{counts[i]} ({percentage:.1f}%)", fontsize=10, ha='center', va='bottom')
 
-
-    # fig.suptitle(f"Anomalous Months for {compound} at {site_name}", fontsize=25, y=1.01)
+    if title:
+       fig.suptitle(f"Anomalous Months for {compound} at {site_name}", fontsize=25, y=1.01)
+    
     fig.set_tight_layout(True)
     plt.show()
 
