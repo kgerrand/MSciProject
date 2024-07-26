@@ -419,7 +419,7 @@ def calc_statistics(results):
 
 #=======================================================================
 def plot_predictions(results, start_date=None, end_date=None,
-                     paper=False, legend=True, legend_pos="best", set_shading=False):
+                     paper=False, legend=True, legend_pos="best", set_shading=True):
     """
     Plots mole fraction against time, with the predicted baselines and true baselines highlighted.
 
@@ -488,7 +488,11 @@ def plot_predictions(results, start_date=None, end_date=None,
     if set_shading:
         # Gosan model
         if site == 'GSN':
-            if start_year and end_year:
+            if results.dropna().index.max() < datetime(2013,1,1):
+                pass
+            elif results.dropna().index.min() > datetime(2014,12,31):
+                pass
+            elif start_year and end_year:
                 # checking training and validation sets within the specified time period, and not shade if not
                 if start_year <= 2013 and end_year >= 2014:
                     for ax in axes:
@@ -509,7 +513,11 @@ def plot_predictions(results, start_date=None, end_date=None,
 
         # all other sites trained on 2018 and validated on 2019
         else:
-            if start_date and end_date:
+            if results.dropna().index.max() < datetime(2018,1,1):
+                pass
+            elif results.dropna().index.min() > datetime(2019,12,31):
+                pass
+            elif start_date and end_date:
                 if start_year <= 2018 and end_year >= 2019:
                     for ax in axes:
                         ax.axvspan(datetime(2018,1,1), datetime(2019,1,1), alpha=0.3, label="Training Set", color='grey')
@@ -555,7 +563,7 @@ def plot_predictions(results, start_date=None, end_date=None,
     
 #=======================================================================
 def plot_predictions_monthly(results, start_date=None, end_date=None, 
-                             show_anomalies=True, legend=True, legend_pos='best', paper=False, title=False, set_shading=False):
+                             show_anomalies=True, legend=True, legend_pos='best', paper=False, title=False, set_shading=True):
     """
     Plots the predicted baselines and their standard deviations against the true baselines and their standard deviations, highlighting any points outside three standard deviations.
 
@@ -639,17 +647,21 @@ def plot_predictions_monthly(results, start_date=None, end_date=None,
     ax.fill_between(df_actual_monthly.index, lower_actual, upper_actual, color='green', alpha=0.2, label="True Baseline Standard Deviation")
 
     # adding shading for training/validation/finetuning sets if visualised in chosen time period
-    if set_shading:
+    if set_shading == True:
         # Gosan model
         if site == 'GSN':
+            if results.dropna().index.max() < datetime(2013,1,1):
+                pass
+            elif results.dropna().index.min() > datetime(2014,12,31):
+                pass
             if start_date and end_date:
                 # checking training and validation sets within the specified time period, and not shade if not
                 if start_year <= 2013 and end_year >= 2014:
                     ax.axvspan(datetime(2013,1,1), datetime(2014,1,1), alpha=0.3, label="Training Set", color='grey')
                     ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
-                elif end_year <= 2013:
+                elif end_year == 2013:
                     ax.axvspan(datetime(2013,1,1), datetime(2014,1,1), alpha=0.3, label="Training Set", color='grey')
-                elif start_year >= 2014:
+                elif start_year == 2014:
                     ax.axvspan(datetime(2014,1,1), datetime(2014,12,31), alpha=0.2, label="Validation Set", color='purple')
                 else:
                     pass
@@ -659,7 +671,11 @@ def plot_predictions_monthly(results, start_date=None, end_date=None,
 
         # all other sites trained on 2018 and validated on 2019
         else:
-            if start_date and end_date:
+            if results.dropna().index.max() < datetime(2018,1,1):
+                pass
+            elif results.dropna().index.min() > datetime(2019,12,31):
+                pass
+            elif start_date and end_date:
                 if start_year <= 2018 and end_year >= 2019:
                     ax.axvspan(datetime(2018,1,1), datetime(2019,1,1), alpha=0.3, label="Training Set", color='grey')
                     ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
@@ -1141,8 +1157,6 @@ def compare_residuals(compare, paper=False, title=True):
 
         if title:
             ax.set_title(title_, fontsize=15)
-
-
 
 #=======================================================================
 def analyse_anomalies(results, anomalies_list, title=False):
