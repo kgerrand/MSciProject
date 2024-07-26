@@ -659,7 +659,7 @@ def plot_predictions_monthly(results, start_date=None, end_date=None,
 
         # all other sites trained on 2018 and validated on 2019
         else:
-            if start_year and end_year:
+            if start_date and end_date:
                 if start_year <= 2018 and end_year >= 2019:
                     ax.axvspan(datetime(2018,1,1), datetime(2019,1,1), alpha=0.3, label="Training Set", color='grey')
                     ax.axvspan(datetime(2019,1,1), datetime(2019,12,31), alpha=0.2, label="Validation Set", color='purple')
@@ -877,6 +877,272 @@ def plot_residuals(residuals, zero=False):
     axes[1].set_xlabel("Residual", fontsize=12, fontstyle='italic')
 
     plt.show()
+
+#=======================================================================
+def aggregate_residuals(titles=False, paper=False, show_std=True):
+    """
+    Plots aggregated histograms of the residuals for all compounds for a given site.
+    Three are produced: one with all residuals stacked, one with residuals aggregated and a density plot.
+
+    Args:
+    - titles (bool): Whether to include titles on the plots.
+    - paper (bool): Whether to format the plot for a paper.
+    - show_std (bool): Whether to show the 1 and 3 standard deviation lines on the aggregate histogram.
+    
+
+    Returns:
+    - None   
+    
+    """
+
+    site, _, _, model_type = access_info()
+
+    # accessing all data files for the site and model type
+    data_files = list((data_path/'saved_files').glob(f"{model_type}_residuals_*_{site}.csv"))
+
+    if len(data_files) == 0:
+        print("No compound residuals files found.")
+    elif len(data_files) == 1:
+        print("1 compound residual file found.")
+    else:
+        print(f"{len(data_files)} compound residual files found.")
+
+
+    # creating an aggregate histogram
+    fig, axes = plt.subplots(3,1,figsize=(12,15))
+    sns.set_theme(style='ticks', font='Arial')
+
+    residuals_list = []
+
+    # looping through each file and extracting residuals
+    for file in data_files:
+        residual_file = pd.read_csv(file)
+        residuals = residual_file.iloc[:,1]
+
+        residuals_list.append(residuals)
+
+        compound = file.stem.split('_')[-2]
+        # capitalising the compound name
+        if compound == 'hcfc-22' or compound == 'ch2cl2' or compound == 'ch3br':
+            compound = compound[:4].upper() + compound[4:]
+        else:
+            compound = compound[:3].upper() + compound[3:]
+
+        # plotting residuals with colour based on compound        
+        axes[0].hist(residuals, bins=20, alpha=0.5, label=compound, edgecolor='black', linewidth=1.5)
+
+    # creating an aggregate histogram with all residuals
+    all_residuals = pd.concat(residuals_list)
+    axes[1].hist(all_residuals, bins=20, color='grey', edgecolor='black', linewidth=1.5)
+
+    # creating a density plot with all residuals
+    sns.kdeplot(all_residuals, ax=axes[2], color='black', linestyle='--', linewidth=1.5, label="Density Plot", fill=True)
+
+
+
+
+    # calculating the percentage of residuals within 3 standard deviations
+    std = all_residuals.std()
+    within_1_std = all_residuals.where((all_residuals <= std) & (all_residuals >= -std)).count()
+    within_3_std = all_residuals.where((all_residuals <= 3*std) & (all_residuals >= -3*std)).count()
+    
+    total = all_residuals.count()
+
+    percentage1 = within_1_std / total * 100
+    percentage3 = within_3_std / total * 100
+
+    if show_std:
+        # drawing lines for 1 and 3 standard deviations
+        axes[1].axvline(x=std, color='red', linestyle='--', label=f"1σ ({percentage1:.1f}%)", linewidth=2.5, alpha=0.6)
+        axes[1].axvline(x=-std, color='red', linestyle='--', linewidth=2.5, alpha=0.75)
+
+        axes[1].axvline(x=3*std, color='red', linestyle='-.', label=f"3σ ({percentage3:.1f}%)", linewidth=2.5, alpha=0.6)
+        axes[1].axvline(x=-3*std, color='red', linestyle='-.', linewidth=2.5, alpha=0.75)
+
+        # adding shading
+        # finding maxmimum frequency for y-axis limit
+        max_freq = max(axes[0].get_ylim()[1], axes[1].get_ylim()[1])
+        axes[1].set_ylim(0, max_freq)
+        axes[1].fill_betweenx([0, max_freq], -std, std, color='red', alpha=0.08)
+        axes[1].fill_betweenx([0, max_freq], -3*std, 3*std, color='red', alpha=0.08)
+        
+        if paper:
+            axes[1].legend(loc='best', fontsize=14)
+        else:
+            axes[1].legend(loc='best', fontsize=12)
+
+    else:
+        print(f"Percentage of residuals within 1 standard deviation: {percentage1:.1f}%")
+        print(f"Percentage of residuals within 3 standard deviations: {percentage3:.1f}%")
+
+
+
+    # formatting
+    if paper:
+        for ax in axes:
+            ax.minorticks_on()
+            ax.set_xlabel("Standardised Residual / number of σ from mean", fontsize=16, fontstyle='italic') 
+            ax.tick_params(axis='both', which='major', labelsize=14)
+            ax.tick_params(axis='both', which='minor', labelsize=12)
+            
+        axes[0].set_ylabel("Frequency", fontsize=16, fontstyle='italic')
+        axes[1].set_ylabel("Frequency", fontsize=16, fontstyle='italic')
+        axes[2].set_ylabel("Density", fontsize=16, fontstyle='italic')
+        axes[0].legend(loc='best', fontsize=14)
+
+    else:
+        for ax in axes:
+            ax.minorticks_on()
+            ax.set_xlabel("Residual", fontsize=12, fontstyle='italic')
+            ax.legend(loc='best', fontsize=12)
+
+        axes[0].set_ylabel("Frequency", fontsize=12, fontstyle='italic')
+        axes[1].set_ylabel("Frequency", fontsize=12, fontstyle='italic')
+        axes[2].set_ylabel("Density", fontsize=12, fontstyle='italic')
+        axes[0].legend(loc='best', fontsize=12)
+
+
+    if titles:
+        axes[0].set_title("Residuals for All Compounds", fontsize=15)
+        axes[1].set_title("Aggregate Residuals", fontsize=15)
+        fig.suptitle(f"Aggregate Residuals for {site}", fontsize=20)
+
+#=======================================================================
+def compare_residuals(compare, paper=False, title=True):
+    """
+    Compares residual density plots for different sites/model types.
+
+    Args:
+    - compare (str): Whether to compare residuals for different sites or model types
+    - paper (bool): Whether to format the plot for a paper.
+    - title (bool): Whether to show the title on the plot.
+    
+
+    Returns:
+    - None
+    
+    """
+
+    site, site_name, _, model_type = access_info()
+
+    if model_type == 'nn':
+        model = 'Neural Network'
+    if model_type == 'rf':
+        model = 'Random Forest'
+
+    if compare=='sites':
+        title_ = f'Comparing {model} Residual Densities for Different Sites'
+        # accessing all data files for each site and the given model type
+        data_files = list((data_path/'saved_files').glob(f"{model_type}_residuals_*.csv"))
+
+        if len(data_files) == 0:
+            print("No residual files found.")
+
+        sites = []    
+        for file in data_files:
+            site = file.stem.split('_')[-1]
+            sites.append(site)
+
+        sites = list(set(sites))
+        if len(sites) == 1:
+            print("Residual data for 1 site found.")
+        else:
+            print(f"Residual data for {len(sites)} sites found.")
+
+
+        # creating a density plot with aggregated residuals for each site
+        fig, ax = plt.subplots(figsize=(12,5))
+        sns.set_theme(style='ticks', font='Arial')
+        ax.minorticks_on()
+
+        for site in sites:
+            # accessing the data files for each site
+            data_files = list((data_path/'saved_files').glob(f"{model_type}_residuals_*_{site}.csv"))
+
+            residuals_list = []
+
+            for file in data_files:
+                residual_file = pd.read_csv(file)
+                residuals = residual_file.iloc[:,1]
+                residuals_list.append(residuals)
+            
+            all_residuals = pd.concat(residuals_list)
+            sns.kdeplot(all_residuals, ax=ax, label=site, fill=True, linewidth=2)
+
+
+    if compare=='models':
+        title_ = f'Comparing Residual Densities for Different Model Types at {site_name}'
+        # accessing all data files for the given site, but different model types
+        data_files = list((data_path/'saved_files').glob(f"*_residuals_*_{site}.csv"))
+
+        if len(data_files) == 0:
+            print("No residual files found.")
+
+        model_types = []    
+        for file in data_files:
+            model_type = file.stem.split('_')[0]
+            model_types.append(model_type)
+
+        model_types = list(set(model_types))
+        if len(model_types) == 1:
+            print(f"Residual data for only 1 model type found at given site ({site_name}).")
+        else:
+            print(f"Residual data for both model types found at given site ({site_name}).")
+
+
+        # creating a density plot with aggregated residuals for each model
+        fig, ax = plt.subplots(figsize=(12,5))
+        sns.set_theme(style='ticks', font='Arial')
+        ax.minorticks_on()
+
+        for model in model_types:
+            # accessing the data files for each site
+            data_files = list((data_path/'saved_files').glob(f"{model}_residuals_*_{site}.csv"))
+
+            if model == 'nn':
+                label = 'Neural Network'
+                colour = '#FF620E'
+            elif model == 'rf':
+                label = 'Random Forest'
+                colour = '#651195'
+
+            residuals_list = []
+
+            for file in data_files:
+                residual_file = pd.read_csv(file)
+                residuals = residual_file.iloc[:,1]
+                residuals_list.append(residuals)
+
+                
+            print(f"{len(residuals_list)} residual datasets found for {label} model.")
+            
+            all_residuals = pd.concat(residuals_list)
+            sns.kdeplot(all_residuals, ax=ax, label=label, fill=True, linewidth=2, color=colour)
+
+    else:
+        AssertionError("Please specify whether to compare residuals for different sites or model types.")
+
+
+    
+    if paper:
+        ax.set_xlabel("Standardised Residual / number of σ from mean", fontsize=16, fontstyle='italic')
+        ax.set_ylabel("Density", fontsize=16, fontstyle='italic')
+        ax.tick_params(axis='both', which='major', labelsize=14)
+        ax.tick_params(axis='both', which='minor', labelsize=12)
+        ax.legend(loc='best', fontsize=14)
+        
+        if title:
+            ax.set_title(title_, fontsize=20)
+
+    else:
+        ax.set_xlabel("Residual", fontsize=12, fontstyle='italic')
+        ax.set_ylabel("Density", fontsize=12, fontstyle='italic')
+        ax.legend(loc='best', fontsize=12)
+
+        if title:
+            ax.set_title(title_, fontsize=15)
+
+
 
 #=======================================================================
 def analyse_anomalies(results, anomalies_list, title=False):
