@@ -103,7 +103,7 @@ def main(year):
                     ],
                         
                     'format': 'netcdf',
-                    'area': [(max_lat),(min_lon), (min_lon),(max_lon),],
+                    'area': [(max_lat),(min_lon), (min_lat),(max_lon),],
                 },
                 # change the output file name as needed
                 output_filename)
