@@ -12,6 +12,8 @@ from pathlib import Path
 from joblib import load
 import calendar
 from scipy.stats import linregress
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
 import config as cfg
 
@@ -20,9 +22,9 @@ data_path = Path.home()/'OneDrive'/'Kirstin'/'Uni'/'Year4'/'MSciProject'/'data_f
 
 ## BASELINE SETUP FUNCTIONS
 #=======================================================================
-def read_manning(site):
+def read_intem(site):
     """
-    Extracting Alistair's baseline flags for a given site
+    Extracting baseline flags for a given site
 
     Args:
     - site (str): Site code (e.g., MHD)
@@ -184,6 +186,83 @@ def add_shifted_time(df, points):
     df_ = df_.iloc[3:]
 
     return df_
+
+#=======================================================================
+def reduce_dimensions(df, num_components):
+    """
+    Reduces the dimensions of the input dataframe to the desired variance using PCA.
+
+    Args:
+    - df (pd.DataFrame): The input dataframe.
+    - num_components (int): The number of components to reduce the dataframe to.
+
+    Returns:
+    - pd.DataFrame: The dataframe with reduced dimensions.
+    """
+
+    # standardising the data based on column groups
+    data_for_pca = df.drop(columns='flag')
+
+    u10_columns = [col for col in data_for_pca.columns if 'u10' in col]
+    v10_columns = [col for col in data_for_pca.columns if 'v10' in col]
+    u850_columns = [col for col in data_for_pca.columns if 'u850' in col]
+    v850_columns = [col for col in data_for_pca.columns if 'v850' in col]
+    u500_columns = [col for col in data_for_pca.columns if 'u500' in col]
+    v500_columns = [col for col in data_for_pca.columns if 'v500' in col]
+
+    column_groups = {
+        'u10': u10_columns,
+        'v10': v10_columns,
+        'u850': u850_columns,
+        'v850': v850_columns,
+        'u500': u500_columns,
+        'v500': v500_columns,
+        'sp': ['sp'],
+        'blh': ['blh'],
+        'time_of_day': ['time_of_day'],
+        'day_of_year': ['day_of_year']
+        }
+    
+    # creating a dictionary to store the standardised data
+    standardised_data = {}
+
+    # standardising each group of columns
+    for group, columns in column_groups.items():
+        data = data_for_pca[columns]
+        
+        # reshape if only one column - applicable for all but the wind columns
+        if data.shape[1] == 1:
+            data = data.values.reshape(-1, 1)
+        
+        standardised_data[group] = StandardScaler().fit_transform(data)
+
+    # concatenating the standardised data into a dataframe for use in PCA
+    # first converting the standardised data into dataframes so dimensions are correct for concatenation
+    dfs = [pd.DataFrame(data, columns=columns) for group, columns, data in zip(column_groups.keys(), column_groups.values(), standardised_data.values())]
+
+    # concatenating the dataframes
+    data_for_pca = pd.concat(dfs, axis=1)
+
+    data_for_pca.index = df.index
+
+
+    # fitting PCA
+    pca = PCA(n_components=num_components)
+    pca.fit(data_for_pca)
+
+    cumulative_variance = np.cumsum(pca.explained_variance_ratio_)
+    print(f"Explained variance with {num_components} components: {(cumulative_variance[-1]*100):.1f}%")
+
+    pca_data = pca.fit_transform(data_for_pca)
+    pca_components_df = pd.DataFrame(pca_data, columns=[f"PC{i+1}" for i in range(num_components)], index=df.index)
+
+    # adding back the flag column
+    pca_components_df['flag'] = df['flag']
+
+    # retrieving loadings for feature importance analysis
+    loadings = pd.DataFrame(pca.components_.T, columns=[f"PC{i+1}" for i in range(num_components)], index=data_for_pca.columns)
+
+    return pca_components_df, loadings
 
 #=======================================================================
 
@@ -471,16 +550,21 @@ def plot_predictions(results, start_date=None, end_date=None,
 
     # plot 1 - true baselines
     results["mf"].plot(ax=axes[0], label="All Data", color='grey', linewidth=1, alpha=0.5)
-    results["mf"].where(results["flag"] == 1).plot(ax=axes[0], label="NAME/InTEM Baselines", color='#4FBF60', linewidth=1.5)
+    # results["mf"].where(results["flag"] == 1).plot(ax=axes[0], label="NAME/InTEM Baselines", color='#4FBF60', linewidth=1.5)
+    axes[0].scatter(results.index, results["mf"].where(results["flag"] == 1), color='#1ace30', label="NAME/InTEM Baselines", s=2, marker='x')
 
     # plot 2 - predicted baselines
     results["mf"].plot(ax=axes[1], label="All Data", color='grey', linewidth=1, alpha=0.5)
-    results["mf"].where(results["predicted_flag"] == 1).plot(ax=axes[1], label="Predicted Baselines", color='#235391', linewidth=1.5)
+    # results["mf"].where(results["predicted_flag"] == 1).plot(ax=axes[1], label="Predicted Baselines", color='#235391', linewidth=1.5)
+    axes[1].scatter(results.index, results["mf"].where(results["predicted_flag"] == 1), color='blue', label="Predicted Baselines", s=2, marker='x')
 
     # plot 3 - comparison
     results["mf"].plot(ax=axes[2], label="All Data", color='grey', linewidth=1, alpha=0.5)
-    results["mf"].where(results["flag"] == 1).plot(ax=axes[2], label="NAME/InTEM Baselines", color='#4FBF60', linewidth=2.5)
-    results["mf"].where(results["predicted_flag"] == 1).plot(ax=axes[2], label="Predicted Baselines", color='#235391', linewidth=1, linestyle='--')
+    # results["mf"].where(results["flag"] == 1).plot(ax=axes[2], label="NAME/InTEM Baselines", color='#4FBF60', linewidth=2.5)
+    # results["mf"].where(results["predicted_flag"] == 1).plot(ax=axes[2], label="Predicted Baselines", color='#235391', linewidth=1, linestyle='--')
+    axes[2].scatter(results.index, results["mf"].where(results["flag"] == 1), color='#1ace30', label="NAME/InTEM Baselines", s=2, marker='x')
+    axes[2].scatter(results.index, results["mf"].where(results["predicted_flag"] == 1), color='blue', label="Predicted Baselines", s=2, marker='x')
+
 
     # formatting depending on for paper (increased font size) or not, and if user wants shading
     # fig.suptitle(f"{compound} at {site_name}", fontsize=20, y=0.92)
@@ -492,7 +576,7 @@ def plot_predictions(results, start_date=None, end_date=None,
                 pass
             elif results.dropna().index.min() > datetime(2014,12,31):
                 pass
-            elif start_year and end_year:
+            elif start_date and end_date:
                 # checking training and validation sets within the specified time period, and not shade if not
                 if start_year <= 2013 and end_year >= 2014:
                     for ax in axes:
@@ -801,13 +885,12 @@ def plot_predictions_monthly(results, start_date=None, end_date=None,
         print(f"Percentage of non-anomalous months: {percentage:.1f}%")  
 
 #=======================================================================
-def calc_residuals(results, save=False):
+def calc_residuals(results):
     """
     Calculates and standardises the residuals between the predicted and true baseline values, based on monthly averages.
 
     Args:
     - results (pandas.DataFrame): Dataframe containing the predicted flags, true flags, and mf values.
-    - save (bool): Whether to save the residuals to a csv file.
 
     Returns:
     - residuals (pandas.Series): A series containing the standardised residuals.
@@ -835,7 +918,7 @@ def calc_residuals(results, save=False):
     # standardising residuals
     residuals = (residuals - residuals.mean()) / residuals.std()
 
-    if save:
+    if compound in cfg.compound_list:
         residuals.to_csv(data_path/'saved_files'/f'{model_type}_residuals_{compound}_{site}.csv')
         print(f"Residuals saved to {model_type}_residuals_{compound}_{site}.csv")
 
@@ -895,16 +978,14 @@ def plot_residuals(residuals, zero=False):
     plt.show()
 
 #=======================================================================
-def aggregate_residuals(titles=False, paper=False, show_std=True):
+def aggregate_residuals(titles=False, paper=False):
     """
     Plots aggregated histograms of the residuals for all compounds for a given site.
-    Three are produced: one with all residuals stacked, one with residuals aggregated and a density plot.
+    Four are produced: one with all residuals stacked, one with all residuals represented as density plots, one with residuals aggregated and an overall density plot.
 
     Args:
     - titles (bool): Whether to include titles on the plots.
-    - paper (bool): Whether to format the plot for a paper.
-    - show_std (bool): Whether to show the 1 and 3 standard deviation lines on the aggregate histogram.
-    
+    - paper (bool): Whether to format the plot for a paper.    
 
     Returns:
     - None   
@@ -918,14 +999,16 @@ def aggregate_residuals(titles=False, paper=False, show_std=True):
 
     if len(data_files) == 0:
         print("No compound residuals files found.")
+        return
     elif len(data_files) == 1:
         print("1 compound residual file found.")
     else:
         print(f"{len(data_files)} compound residual files found.")
+        
 
 
     # creating an aggregate histogram
-    fig, axes = plt.subplots(3,1,figsize=(12,15))
+    fig, axes = plt.subplots(4,1,figsize=(12,18))
     sns.set_theme(style='ticks', font='Arial')
 
     residuals_list = []
@@ -946,13 +1029,18 @@ def aggregate_residuals(titles=False, paper=False, show_std=True):
 
         # plotting residuals with colour based on compound        
         axes[0].hist(residuals, bins=20, alpha=0.5, label=compound, edgecolor='black', linewidth=1.5)
+        sns.kdeplot(residuals, ax=axes[1], label=compound, linestyle='-', linewidth=2, fill=False)
+
+    axes[0].set_xlim(-3,3)
+    axes[1].set_xlim(-3,3)
+    axes[1].set_ylim(0,1)
 
     # creating an aggregate histogram with all residuals
     all_residuals = pd.concat(residuals_list)
-    axes[1].hist(all_residuals, bins=20, color='grey', edgecolor='black', linewidth=1.5)
+    axes[2].hist(all_residuals, bins=20, color='grey', edgecolor='black', linewidth=1.5)
 
     # creating a density plot with all residuals
-    sns.kdeplot(all_residuals, ax=axes[2], color='black', linestyle='--', linewidth=1.5, label="Density Plot", fill=True)
+    sns.kdeplot(all_residuals, ax=axes[3], color='black', linestyle='--', linewidth=1.5, fill=True)
 
 
 
@@ -967,29 +1055,8 @@ def aggregate_residuals(titles=False, paper=False, show_std=True):
     percentage1 = within_1_std / total * 100
     percentage3 = within_3_std / total * 100
 
-    if show_std:
-        # drawing lines for 1 and 3 standard deviations
-        axes[1].axvline(x=std, color='red', linestyle='--', label=f"1σ ({percentage1:.1f}%)", linewidth=2.5, alpha=0.6)
-        axes[1].axvline(x=-std, color='red', linestyle='--', linewidth=2.5, alpha=0.75)
-
-        axes[1].axvline(x=3*std, color='red', linestyle='-.', label=f"3σ ({percentage3:.1f}%)", linewidth=2.5, alpha=0.6)
-        axes[1].axvline(x=-3*std, color='red', linestyle='-.', linewidth=2.5, alpha=0.75)
-
-        # adding shading
-        # finding maxmimum frequency for y-axis limit
-        max_freq = max(axes[0].get_ylim()[1], axes[1].get_ylim()[1])
-        axes[1].set_ylim(0, max_freq)
-        axes[1].fill_betweenx([0, max_freq], -std, std, color='red', alpha=0.08)
-        axes[1].fill_betweenx([0, max_freq], -3*std, 3*std, color='red', alpha=0.08)
-        
-        if paper:
-            axes[1].legend(loc='best', fontsize=14)
-        else:
-            axes[1].legend(loc='best', fontsize=12)
-
-    else:
-        print(f"Percentage of residuals within 1 standard deviation: {percentage1:.1f}%")
-        print(f"Percentage of residuals within 3 standard deviations: {percentage3:.1f}%")
+    print(f"Percentage of residuals within 1 standard deviation: {percentage1:.1f}%")
+    print(f"Percentage of residuals within 3 standard deviations: {percentage3:.1f}%")
 
 
 
@@ -1002,20 +1069,23 @@ def aggregate_residuals(titles=False, paper=False, show_std=True):
             ax.tick_params(axis='both', which='minor', labelsize=12)
             
         axes[0].set_ylabel("Frequency", fontsize=16, fontstyle='italic')
-        axes[1].set_ylabel("Frequency", fontsize=16, fontstyle='italic')
-        axes[2].set_ylabel("Density", fontsize=16, fontstyle='italic')
+        axes[1].set_ylabel("Density", fontsize=16, fontstyle='italic')
+        axes[2].set_ylabel("Frequency", fontsize=16, fontstyle='italic')
+        axes[3].set_ylabel("Density", fontsize=16, fontstyle='italic')
         axes[0].legend(loc='best', fontsize=14)
+        axes[1].legend(loc='best', fontsize=14)
 
     else:
         for ax in axes:
             ax.minorticks_on()
             ax.set_xlabel("Residual", fontsize=12, fontstyle='italic')
-            ax.legend(loc='best', fontsize=12)
 
         axes[0].set_ylabel("Frequency", fontsize=12, fontstyle='italic')
-        axes[1].set_ylabel("Frequency", fontsize=12, fontstyle='italic')
-        axes[2].set_ylabel("Density", fontsize=12, fontstyle='italic')
+        axes[1].set_ylabel("Density", fontsize=12, fontstyle='italic')
+        axes[2].set_ylabel("Frequency", fontsize=12, fontstyle='italic')
+        axes[3].set_ylabel("Density", fontsize=12, fontstyle='italic')
         axes[0].legend(loc='best', fontsize=12)
+        axes[1].legend(loc='best', fontsize=12)
 
 
     if titles:
@@ -1173,6 +1243,10 @@ def analyse_anomalies(results, anomalies_list, title=False):
     - None
     """   
 
+    if anomalies_list == []:
+        print("No anomalies detected.")
+        return
+
     _, site_name, compound, _ = access_info()
 
     def get_days(month):
@@ -1274,7 +1348,7 @@ def analyse_anomalies(results, anomalies_list, title=False):
                         color='blue', label=f"Predicted Baselines (count={pred_count})", marker='x', s=75)
             # plotting mean lines
             axs[n,0].axhline(y=actual_mean, color='darkgreen', linestyle='-', label='True Mean')
-            axs[n,0].axhline(y=pred_mean, color='red', linestyle='-', label='Predicted Mean') 
+            axs[n,0].axhline(y=pred_mean, color='blue', linestyle='-', label='Predicted Mean') 
 
             # adding tolerance limit line
             actual_std = month["mf"].where(month["flag"] == 1).std()
